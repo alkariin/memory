@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Trash2, List, Tag, Filter, RotateCcw, Clock, Edit2, X, Plus, Check, BookOpen } from 'lucide-react';
+import { Calendar, Trash2, List, Tag, Filter, RotateCcw, Clock, X, Plus, Check, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
 interface Word {
@@ -67,10 +67,12 @@ export default function WordList() {
   };
 
   const deleteWord = (id: string) => {
-    const allWords = JSON.parse(localStorage.getItem('words') || '[]');
-    const updatedWords = allWords.filter((word: Word) => word.id !== id);
-    localStorage.setItem('words', JSON.stringify(updatedWords));
-    loadWords();
+    if (window.confirm('Are you sure you want to delete this word?')) {
+      const allWords = JSON.parse(localStorage.getItem('words') || '[]');
+      const updatedWords = allWords.filter((word: Word) => word.id !== id);
+      localStorage.setItem('words', JSON.stringify(updatedWords));
+      loadWords();
+    }
   };
 
   const addTagToWord = (wordId: string) => {
@@ -334,8 +336,8 @@ export default function WordList() {
                         </div>
                         <button
                           onClick={() => deleteWord(word.id)}
-                          className="flex-shrink-0 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                          aria-label="Supprimer"
+                          className="flex-shrink-0 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all md:opacity-0 md:group-hover:opacity-100"
+                          aria-label="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

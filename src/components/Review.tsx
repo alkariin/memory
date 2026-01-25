@@ -26,11 +26,8 @@ export default function Review() {
   const [words, setWords] = useState<Word[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showWord, setShowWord] = useState(false);
-  const [showCompletionDialog, setShowCompletionDialog] =
-    useState(false);
-  const [filterTag, setFilterTag] = useState<string | null>(
-    null,
-  );
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  const [filterTag, setFilterTag] = useState<string | null>(null);
 
   useEffect(() => {
     loadWords();
@@ -40,41 +37,19 @@ export default function Review() {
     const storedWords = JSON.parse(
       localStorage.getItem("words") || "[]",
     );
-    // Migrate old words without the new fields
-    const migratedWords = storedWords.map((w: any) => ({
-      ...w,
-      reviewCount: w.reviewCount || 0,
-      lastReviewedDate: w.lastReviewedDate || null,
-      tags: w.tags || [],
-    }));
 
     // Check if there's an active filter
     const filterData = localStorage.getItem("reviewFilter");
     if (filterData) {
       const filter = JSON.parse(filterData);
       setFilterTag(filter.tag);
-      const filteredWords = migratedWords.filter((w: Word) =>
-        w.tags?.includes(filter.tag),
-      );
-      setWords(filteredWords);
+      const filteredWords = storedWords.filter((w: Word) => w.tags?.includes(filter.tag));
+      const updatedWords = filteredWords.map((w: Word) => ({...w, reviewed: false}));
+      setWords(updatedWords);
       localStorage.removeItem("reviewFilter"); // Clear filter after use
-
-      if (
-        filteredWords.length > 0 &&
-        filteredWords.every((w: Word) => w.reviewed)
-      ) {
-        setShowCompletionDialog(true);
-      }
     } else {
-      setWords(migratedWords);
-
-      // Check if all words are reviewed
-      if (
-        migratedWords.length > 0 &&
-        migratedWords.every((w: Word) => w.reviewed)
-      ) {
-        setShowCompletionDialog(true);
-      }
+      const wordsToReview = storedWords.filter((w: Word) => !w.reviewed);
+      setWords(wordsToReview);
     }
   };
 
@@ -135,32 +110,8 @@ export default function Review() {
     }
   };
 
-  const resetAllReviews = () => {
-    const allWords = JSON.parse(
-      localStorage.getItem("words") || "[]",
-    );
-    const updatedAllWords = allWords.map((w: Word) => {
-      // Reset only the words in the current filter
-      if (filterTag) {
-        if (w.tags?.includes(filterTag)) {
-          return { ...w, reviewed: false };
-        }
-        return w;
-      } else {
-        return { ...w, reviewed: false };
-      }
-    });
-
-    localStorage.setItem(
-      "words",
-      JSON.stringify(updatedAllWords),
-    );
-
-    const updatedWords = words.map((w) => ({
-      ...w,
-      reviewed: false,
-    }));
-    setWords(updatedWords);
+  const close = () => {
+    setWords([]);
     setShowCompletionDialog(false);
     setCurrentIndex(0);
     setShowWord(false);
@@ -345,10 +296,10 @@ export default function Review() {
               Excellent work!
             </p>
             <button
-              onClick={resetAllReviews}
+              onClick={close}
               className="w-full bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 transition-all"
             >
-              Restart the review
+              Close
             </button>
           </div>
         </div>
