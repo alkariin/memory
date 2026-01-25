@@ -1,0 +1,16 @@
+# Node modules
+node_modules/
+
+# Build output
+build/
+
+# VSCode settings
+.vscode/
+
+# Optional npm cache
+.npm
+
+# Misc
+*.local
+*.log
+*.lock
