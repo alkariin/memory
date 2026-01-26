@@ -47,12 +47,8 @@ export default function Review() {
     if (filterData) {
       const filter = JSON.parse(filterData);
       setFilterTag(filter.tag);
-      // Filter by tag AND by review date
-      const filteredWords = storedWords.filter((w: Word) => {
-        if (!w.tags?.includes(filter.tag)) return false;
-        // Include words that have never been reviewed OR are due for review
-        return !w.nextReviewDate || w.nextReviewDate <= today;
-      });
+      // Filter by tag only (ignore review dates when tag filter is active)
+      const filteredWords = storedWords.filter((w: Word) => w.tags?.includes(filter.tag));
       // Add local reviewed property for UI state
       const updatedWords: ReviewWord[] = filteredWords.map((w: Word) => ({ ...w, reviewed: false }));
       setWords(updatedWords);
@@ -93,8 +89,11 @@ export default function Review() {
 
   const markAsReviewed = (difficulty: EASE) => {
     const currentWord = words[currentIndex];
+    const isTagFilterActive = filterTag !== null;
+    
+    // Only update iteration if NOT in tag filter mode
     const currentIteration = currentWord.iteration || 0;
-    const nextIteration = difficulty === EASE.HARD ? currentIteration : currentIteration + 1;
+    const nextIteration = difficulty === EASE.HARD || isTagFilterActive ? currentIteration : currentIteration + 1;
     
     // Calculate next review interval based on difficulty
     const baseInterval = INTERVAL[Math.min(nextIteration, INTERVAL.length - 1)];
