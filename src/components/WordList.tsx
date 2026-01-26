@@ -244,19 +244,21 @@ export default function WordList() {
                       key={word.id}
                       className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md hover:border-orange-200 transition-all group"
                     >
-                      <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-gray-900 mb-1">
-                            {word.word}
-                          </h4>
-                          {word.correlation && (
-                            <p className="text-sm text-gray-600 line-clamp-2 mb-2">
-                              {word.correlation}
-                            </p>
-                          )}
+                          <div className="flex items-center gap-1 mb-2">
+                            <h4 className="text-gray-900">
+                              {word.word}
+                            </h4>
+                            {word.correlation && (
+                              <p className="text-sm text-gray-600 truncate flex-1">
+                                - {word.correlation}
+                              </p>
+                            )}
+                          </div>
                           
                           {/* Tags */}
-                          <div className="mb-2">
+                          <div className="mb-3">
                             <div className="flex flex-wrap items-center gap-1.5">
                               {word.tags && word.tags.length > 0 && word.tags.map((tag) => (
                                 <span
