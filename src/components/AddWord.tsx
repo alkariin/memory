@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type KeyboardEvent, type FocusEvent, type MouseEvent } from 'react';
 import { Check, X, Tag } from 'lucide-react';
 
 interface Word {
@@ -19,9 +19,17 @@ export default function AddWord() {
   const [tags, setTags] = useState<string[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const handleAddTag = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && tagInput.trim()) {
-      e.preventDefault();
+  const handleAddTag = (e?: KeyboardEvent | FocusEvent | MouseEvent) => {
+    if (e) {
+      if (e.type === 'keydown' && (e as KeyboardEvent).key !== 'Enter') {
+        return;
+      }
+      if (e.type === 'keydown' || e.type === 'click') {
+        e.preventDefault();
+      }
+    }
+
+    if (tagInput.trim()) {
       if (!tags.includes(tagInput.trim())) {
         setTags([...tags, tagInput.trim()]);
       }
@@ -106,15 +114,16 @@ export default function AddWord() {
           <label htmlFor="tags" className="block text-sm text-gray-700 mb-2">
             Tags (optional)
           </label>
-          <input
-            type="text"
-            id="tags"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={handleAddTag}
-            placeholder="Type a tag and press Enter..."
+            <input
+              type="text"
+              id="tags"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleAddTag}
+              onBlur={handleAddTag}
+              placeholder="Type a tag and press Enter..."
             className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-          />
+            />
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3">
               {tags.map((tag) => (
