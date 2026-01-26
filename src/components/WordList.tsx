@@ -1,17 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Trash2, List, Tag, Filter, RotateCcw, Clock, X, Plus, Check, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router';
-
-interface Word {
-  id: string;
-  word: string;
-  correlation: string;
-  date: string;
-  reviewed: boolean;
-  reviewCount: number;
-  lastReviewedDate: string | null;
-  tags: string[];
-}
+import { Word } from '@/shared/types';
 
 interface GroupedWords {
   [date: string]: Word[];
@@ -125,7 +115,7 @@ export default function WordList() {
     } else if (date.toDateString() === yesterday.toDateString()) {
       return 'Yesterday';
     } else {
-      return date.toLocaleDateString('en-US', { 
+      return date.toLocaleDateString('fr-CH', { 
         day: 'numeric',
         month: 'long',
         year: 'numeric'
@@ -146,11 +136,22 @@ export default function WordList() {
     } else if (date.toDateString() === yesterday.toDateString()) {
       return 'yesterday';
     } else {
-      return 'on ' + date.toLocaleDateString('en-US', { 
+      return 'on ' + date.toLocaleDateString('fr-CH', {
         day: 'numeric',
         month: 'short',
       });
     }
+  };
+
+  const formatNextReview = (dateString: string | null) => {
+    if (!dateString) return null;
+    
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-CH', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   return (
@@ -329,7 +330,17 @@ export default function WordList() {
                             {word.lastReviewedDate && (
                               <div className="inline-flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                <span>Reviewed {formatLastReviewed(word.lastReviewedDate)}</span>
+                                <span>
+                                  Reviewed {formatLastReviewed(word.lastReviewedDate)}
+                                </span>
+                              </div>
+                            )}
+                            {word.nextReviewDate && (
+                              <div className="inline-flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span>
+                                  Next: {formatNextReview(word.nextReviewDate)}
+                                </span>
                               </div>
                             )}
                           </div>

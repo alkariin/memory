@@ -1,16 +1,6 @@
 import { useState, type KeyboardEvent, type FocusEvent, type MouseEvent } from 'react';
 import { Check, X, Tag } from 'lucide-react';
-
-interface Word {
-  id: string;
-  word: string;
-  correlation: string;
-  date: string;
-  reviewed: boolean;
-  reviewCount: number;
-  lastReviewedDate: string | null;
-  tags: string[];
-}
+import { EASE, Word } from '@/shared/types';
 
 export default function AddWord() {
   const [word, setWord] = useState('');
@@ -55,6 +45,9 @@ export default function AddWord() {
       reviewCount: 0,
       lastReviewedDate: null,
       tags: tags,
+      iteration: 0,
+      ease: EASE.MEDIUM,
+      nextReviewDate: null,
     };
 
     // Get existing words

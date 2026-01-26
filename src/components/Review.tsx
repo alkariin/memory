@@ -10,16 +10,14 @@ import {
   PartyPopper,
   Tag,
 } from "lucide-react";
+import { EASE, Word } from "@/shared/types";
 
-interface Word {
-  id: string;
-  word: string;
-  correlation: string;
-  date: string;
-  reviewed: boolean;
-  reviewCount: number;
-  lastReviewedDate: string | null;
-  tags: string[];
+const INTERVAL = [0, 1, 3, 7, 14, 30, 60, 120, 240]
+
+const factorInterval = {
+  [EASE.EASY]: 1.5,
+  [EASE.MEDIUM]: 1,
+  [EASE.HARD]: 0.5,
 }
 
 export default function Review() {
@@ -69,12 +67,25 @@ export default function Review() {
     );
   };
 
-  const markAsReviewed = () => {
+  const markAsReviewed = (difficulty: EASE) => {
+    const currentWord = words[currentIndex];
+    const currentIteration = currentWord.iteration || 0;
+    const nextIteration = difficulty === EASE.HARD ? currentIteration : currentIteration + 1;
+    
+    // Calculate next review interval based on difficulty
+    const baseInterval = INTERVAL[Math.min(nextIteration, INTERVAL.length - 1)];
+    const adjustedInterval = Math.round(baseInterval * factorInterval[difficulty]);
+    
+    // Calculate next review date
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + adjustedInterval);
+    const nextReviewDate = nextDate.toISOString().split("T")[0];
+
     const allWords = JSON.parse(
       localStorage.getItem("words") || "[]",
     );
     const updatedAllWords = allWords.map((w: Word) => {
-      if (w.id === words[currentIndex].id) {
+      if (w.id === currentWord.id) {
         return {
           ...w,
           reviewed: true,
@@ -82,6 +93,9 @@ export default function Review() {
           lastReviewedDate: new Date()
             .toISOString()
             .split("T")[0],
+          nextReviewDate,
+          iteration: nextIteration,
+          ease: difficulty,
         };
       }
       return w;
@@ -100,6 +114,9 @@ export default function Review() {
     updatedWords[currentIndex].lastReviewedDate = new Date()
       .toISOString()
       .split("T")[0];
+    updatedWords[currentIndex].nextReviewDate = nextReviewDate;
+    updatedWords[currentIndex].iteration = nextIteration;
+    updatedWords[currentIndex].ease = difficulty;
     setWords(updatedWords);
 
     // Check if it was the last word
@@ -157,8 +174,8 @@ export default function Review() {
         <div className="flex items-center gap-2">
           <p className="text-gray-600 text-sm">
             {filterTag
-              ? `Tag: ${filterTag}`
-              : "Test your knowledge"}
+              ? `Review the words of the tag: ${filterTag}`
+              : "Review your words of the day"}
           </p>
           {filterTag && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded text-xs">
@@ -252,21 +269,48 @@ export default function Review() {
       </div>
 
       {/* Controls */}
-      <div className="space-y-3">
-        <button
-          onClick={markAsReviewed}
-          disabled={currentWord.reviewed}
-          className={`w-full py-3.5 rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm ${
-            currentWord.reviewed
-              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : "bg-orange-600 text-white hover:bg-orange-700"
-          }`}
-        >
-          <Check className="w-5 h-5" />
-          {currentWord.reviewed
-            ? "Already reviewed"
-            : "Mark as reviewed"}
-        </button>
+      <div className="space-y-4">
+        <div className="text-center text-sm font-medium text-gray-700 mb-3">
+          How difficult was this word?
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => markAsReviewed(EASE.EASY)}
+            disabled={currentWord.reviewed}
+            className={`flex-1 py-3.5 rounded-xl transition-all flex flex-col items-center justify-center gap-1 font-medium ${
+              currentWord.reviewed
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+              : "bg-green-20 text-gray-900 border-2 shadow-sm"
+            }`}
+          >
+            <Check className="w-5 h-5" />
+            <span className="text-sm">Easy</span>
+          </button>
+          <button
+            onClick={() => markAsReviewed(EASE.MEDIUM)}
+            disabled={currentWord.reviewed}
+            className={`flex-1 py-3.5 rounded-xl transition-all flex flex-col items-center justify-center gap-1 font-medium ${
+              currentWord.reviewed
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+              : "bg-orange-50 text-gray-900 border-2 shadow-sm"
+            }`}
+          >
+            <Check className="w-5 h-5" />
+            <span className="text-sm">Medium</span>
+          </button>
+          <button
+            onClick={() => markAsReviewed(EASE.HARD)}
+            disabled={currentWord.reviewed}
+            className={`flex-1 py-3.5 rounded-xl transition-all flex flex-col items-center justify-center gap-1 font-medium ${
+              currentWord.reviewed
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+              : "bg-red-50 text-gray-900 border-2 shadow-sm"
+            }`}
+          >
+            <Check className="w-5 h-5" />
+            <span className="text-sm">Hard</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
