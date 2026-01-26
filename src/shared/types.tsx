@@ -9,7 +9,6 @@ export interface Word {
   word: string;
   correlation: string;
   date: string;
-  reviewed: boolean;
   reviewCount: number;
   lastReviewedDate: string | null;
   nextReviewDate: string | null;

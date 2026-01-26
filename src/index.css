@@ -831,6 +831,10 @@
     background-color: var(--color-white);
   }
 
+  .bg-opacity-50 {
+    background-color: rgba(0, 0, 0, .5);
+  }
+
   .p-0\.5 {
     padding: calc(var(--spacing) * .5);
   }

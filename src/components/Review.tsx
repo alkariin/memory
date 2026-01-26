@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { EASE, Word } from "@/shared/types";
 
+// Local type for Review component with UI state
+type ReviewWord = Word & { reviewed: boolean };
+
 const INTERVAL = [0, 1, 3, 7, 14, 30, 60, 120, 240]
 
 const factorInterval = {
@@ -21,7 +24,7 @@ const factorInterval = {
 }
 
 export default function Review() {
-  const [words, setWords] = useState<Word[]>([]);
+  const [words, setWords] = useState<ReviewWord[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showWord, setShowWord] = useState(false);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
@@ -36,18 +39,39 @@ export default function Review() {
       localStorage.getItem("words") || "[]",
     );
 
+    // Get today's date in ISO format (YYYY-MM-DD)
+    const today = new Date().toISOString().split("T")[0];
+    
     // Check if there's an active filter
     const filterData = localStorage.getItem("reviewFilter");
     if (filterData) {
       const filter = JSON.parse(filterData);
       setFilterTag(filter.tag);
-      const filteredWords = storedWords.filter((w: Word) => w.tags?.includes(filter.tag));
-      const updatedWords = filteredWords.map((w: Word) => ({...w, reviewed: false}));
+      // Filter by tag AND by review date
+      const filteredWords = storedWords.filter((w: Word) => {
+        if (!w.tags?.includes(filter.tag)) return false;
+        // Include words that have never been reviewed OR are due for review
+        return !w.nextReviewDate || w.nextReviewDate <= today;
+      });
+      // Add local reviewed property for UI state
+      const updatedWords: ReviewWord[] = filteredWords.map((w: Word) => ({ ...w, reviewed: false }));
       setWords(updatedWords);
       localStorage.removeItem("reviewFilter"); // Clear filter after use
     } else {
-      const wordsToReview = storedWords.filter((w: Word) => !w.reviewed);
-      setWords(wordsToReview);
+      // Filter words that are due for review:
+      // 1. Never reviewed (nextReviewDate is null), OR
+      // 2. nextReviewDate is today or in the past
+      const wordsToReview = storedWords.filter((w: Word) => {
+        return !w.nextReviewDate || w.nextReviewDate <= today;
+      });
+
+      // Add local reviewed property for UI state
+      const updatedWords: ReviewWord[] = wordsToReview.map((w: Word) => ({
+        ...w,
+        reviewed: false
+      }));
+
+      setWords(updatedWords);
     }
   };
 
@@ -74,7 +98,7 @@ export default function Review() {
     
     // Calculate next review interval based on difficulty
     const baseInterval = INTERVAL[Math.min(nextIteration, INTERVAL.length - 1)];
-    const adjustedInterval = Math.round(baseInterval * factorInterval[difficulty]);
+    const adjustedInterval = Math.max(Math.round(baseInterval * factorInterval[difficulty]), 1);
     
     // Calculate next review date
     const nextDate = new Date();
@@ -88,7 +112,6 @@ export default function Review() {
       if (w.id === currentWord.id) {
         return {
           ...w,
-          reviewed: true,
           reviewCount: (w.reviewCount || 0) + 1,
           lastReviewedDate: new Date()
             .toISOString()
@@ -329,8 +352,8 @@ export default function Review() {
       {showCompletionDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-6 z-50">
           <div className="bg-white rounded-xl p-8 max-w-sm w-full text-center shadow-2xl">
-            <div className="w-20 h-20 bg-green-100 rounded-full mx-auto mb-6 flex items-center justify-center">
-              <PartyPopper className="w-10 h-10 text-green-600" />
+            <div className="w-20 h-20 bg-orange-100 rounded-full mx-auto mb-6 flex items-center justify-center">
+              <PartyPopper className="w-10 h-10 text-orange-600" />
             </div>
             <h3 className="text-gray-900 mb-3 text-2xl">
               Congratulations!

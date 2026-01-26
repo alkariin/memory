@@ -41,7 +41,6 @@ export default function AddWord() {
       word: word.trim(),
       correlation: correlation.trim(),
       date: new Date().toISOString().split('T')[0],
-      reviewed: false,
       reviewCount: 0,
       lastReviewedDate: null,
       tags: tags,
