@@ -19,7 +19,7 @@
           description: 'Expand your vocabulary and learn new words',
           theme_color: '#ea580c',
           background_color: '#ffffff',
-          start_url: '/',
+          start_url: '.',
           scope: "/",
           display: 'standalone',
           icons: [
