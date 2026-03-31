@@ -252,6 +252,21 @@ export default function Review() {
                 </button>
               </div>
             )}
+
+            {/* Tags */}
+            {currentWord.tags && currentWord.tags.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-1.5 mt-4">
+                {currentWord.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded text-xs"
+                  >
+                    <Tag className="w-3 h-3" />
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Navigation Arrows */}
