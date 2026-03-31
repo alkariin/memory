@@ -1153,6 +1153,30 @@
     letter-spacing: 0.05em;
   }
 
+  .relative {
+    position: relative;
+  }
+
+  .overflow-auto {
+    overflow: auto;
+  }
+
+  .max-h-32 {
+    max-height: calc(var(--spacing) * 32);
+  }
+
+  .mt-1 {
+    margin-top: calc(var(--spacing) * 1);
+  }
+
+  .py-1\.5 {
+    padding-block: calc(var(--spacing) * 1.5);
+  }
+
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
   .font-medium {
     --tw-font-weight: var(--font-weight-medium);
     font-weight: var(--font-weight-medium);

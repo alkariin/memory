@@ -1,4 +1,4 @@
-import { useState, useEffect, type KeyboardEvent, type FocusEvent, type MouseEvent } from 'react';
+import { useState, useEffect, useRef, type KeyboardEvent, type FocusEvent, type MouseEvent } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Check, X, Tag } from 'lucide-react';
 import { EASE, Word } from '@/shared/types';
@@ -14,9 +14,21 @@ export default function AddWord() {
   const [tags, setTags] = useState<string[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [editingWord, setEditingWord] = useState<Word | null>(null);
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const blurTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load all existing tags from localStorage
+  useEffect(() => {
+    const storedWords: Word[] = JSON.parse(localStorage.getItem('words') || '[]');
+    const tagSet = new Set<string>();
+    storedWords.forEach((w) => w.tags?.forEach((t) => tagSet.add(t)));
+    setAllTags(Array.from(tagSet).sort());
+  }, []);
 
   // Load existing word when editing
   useEffect(() => {
+    // ...existing code...
     if (id) {
       const storedWords: Word[] = JSON.parse(localStorage.getItem('words') || '[]');
       const found = storedWords.find((w) => w.id === id);
@@ -26,11 +38,9 @@ export default function AddWord() {
         setCorrelation(found.correlation || '');
         setTags(found.tags || []);
       } else {
-        // Word not found, go back to list
         navigate('/list');
       }
     } else {
-      // Reset form when switching from edit to add
       setEditingWord(null);
       setWord('');
       setCorrelation('');
@@ -38,6 +48,21 @@ export default function AddWord() {
       setTagInput('');
     }
   }, [id, navigate]);
+
+  const filteredSuggestions = allTags.filter(
+    (t) =>
+      tagInput.trim().length > 0 &&
+      t.toLowerCase().includes(tagInput.trim().toLowerCase()) &&
+      !tags.includes(t)
+  );
+
+  const selectSuggestion = (tag: string) => {
+    if (!tags.includes(tag)) {
+      setTags([...tags, tag]);
+    }
+    setTagInput('');
+    setShowSuggestions(false);
+  };
 
   const handleAddTag = (e?: KeyboardEvent | FocusEvent | MouseEvent) => {
     if (e) {
@@ -55,6 +80,22 @@ export default function AddWord() {
       }
       setTagInput('');
     }
+    setShowSuggestions(false);
+  };
+
+  const handleTagBlur = () => {
+    // Delay to allow click on suggestion to fire first
+    blurTimeout.current = setTimeout(() => {
+      handleAddTag();
+      setShowSuggestions(false);
+    }, 150);
+  };
+
+  const handleTagFocus = () => {
+    if (blurTimeout.current) {
+      clearTimeout(blurTimeout.current);
+    }
+    setShowSuggestions(true);
   };
 
   const removeTag = (tagToRemove: string) => {
@@ -152,16 +193,41 @@ export default function AddWord() {
           <label htmlFor="tags" className="block text-sm text-gray-600 mb-2">
             Tags
           </label>
-          <input
-            type="text"
-            id="tags"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={handleAddTag}
-            onBlur={handleAddTag}
-            placeholder="Type a tag and press Enter..."
-            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              id="tags"
+              value={tagInput}
+              onChange={(e) => {
+                setTagInput(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onKeyDown={handleAddTag}
+              onBlur={handleTagBlur}
+              onFocus={handleTagFocus}
+              placeholder="Type a tag and press Enter..."
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm"
+              autoComplete="off"
+            />
+            {showSuggestions && filteredSuggestions.length > 0 && (
+              <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg overflow-hidden z-50 max-h-32 overflow-auto">
+                {filteredSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      selectSuggestion(suggestion);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-all cursor-pointer inline-flex items-center gap-2"
+                  >
+                    <Tag className="w-3 h-3 text-gray-400" />
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3">
               {tags.map((tag) => (
