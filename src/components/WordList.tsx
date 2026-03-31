@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Trash2, List, Tag, Filter, RotateCcw, Clock, X, Plus, Check, BookOpen } from 'lucide-react';
+import { Calendar, Trash2, List, Tag, Filter, RotateCcw, Clock, Pencil, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { Word } from '@/shared/types';
 
@@ -13,8 +13,6 @@ export default function WordList() {
   const [groupedWords, setGroupedWords] = useState<GroupedWords>({});
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
-  const [editingWordId, setEditingWordId] = useState<string | null>(null);
-  const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
     loadWords();
@@ -63,38 +61,6 @@ export default function WordList() {
       localStorage.setItem('words', JSON.stringify(updatedWords));
       loadWords();
     }
-  };
-
-  const addTagToWord = (wordId: string) => {
-    if (!tagInput.trim()) return;
-    
-    const allWords = JSON.parse(localStorage.getItem('words') || '[]');
-    const updatedWords = allWords.map((w: Word) => {
-      if (w.id === wordId) {
-        const tags = w.tags || [];
-        if (!tags.includes(tagInput.trim())) {
-          return { ...w, tags: [...tags, tagInput.trim()] };
-        }
-      }
-      return w;
-    });
-    
-    localStorage.setItem('words', JSON.stringify(updatedWords));
-    setTagInput('');
-    loadWords();
-  };
-
-  const removeTagFromWord = (wordId: string, tagToRemove: string) => {
-    const allWords = JSON.parse(localStorage.getItem('words') || '[]');
-    const updatedWords = allWords.map((w: Word) => {
-      if (w.id === wordId) {
-        return { ...w, tags: (w.tags || []).filter(t => t !== tagToRemove) };
-      }
-      return w;
-    });
-    
-    localStorage.setItem('words', JSON.stringify(updatedWords));
-    loadWords();
   };
 
   const startReviewWithTag = () => {
@@ -258,68 +224,21 @@ export default function WordList() {
                           </div>
                           
                           {/* Tags */}
-                          <div className="mb-3">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {word.tags && word.tags.length > 0 && word.tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded text-xs group/tag"
-                                >
-                                  <Tag className="w-3 h-3" />
-                                  {tag}
-                                  {editingWordId === word.id && (
-                                    <button
-                                      onClick={() => removeTagFromWord(word.id, tag)}
-                                      className="hover:text-orange-900"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                </span>
-                              ))}
-                              
-                              {editingWordId === word.id ? (
-                                <div className="inline-flex items-center gap-1">
-                                  <input
-                                    type="text"
-                                    value={tagInput}
-                                    onChange={(e) => setTagInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        addTagToWord(word.id);
-                                      }
-                                    }}
-                                    placeholder="New tag..."
-                                    className="px-2 py-0.5 text-xs border border-orange-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500"
-                                    autoFocus
-                                  />
-                                  <button
-                                    onClick={() => addTagToWord(word.id)}
-                                    className="p-0.5 text-green-600 hover:text-green-700"
+                          {word.tags && word.tags.length > 0 && (
+                            <div className="mb-3">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {word.tags.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 rounded text-xs"
                                   >
-                                    <Check className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setEditingWordId(null);
-                                      setTagInput('');
-                                    }}
-                                    className="p-0.5 text-gray-600 hover:text-gray-700"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => setEditingWordId(word.id)}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs hover:bg-gray-200 transition-all"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                  Tag
-                                </button>
-                              )}
+                                    <Tag className="w-3 h-3" />
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
+                          )}
                           
                           {/* Review stats */}
                           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
@@ -347,13 +266,22 @@ export default function WordList() {
                             )}
                           </div>
                         </div>
-                        <button
-                          onClick={() => deleteWord(word.id)}
-                          className="flex-shrink-0 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all md:opacity-0 md:group-hover:opacity-100"
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex-shrink-0 flex flex-col gap-1">
+                          <button
+                            onClick={() => navigate(`/edit/${word.id}`)}
+                            className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all md:opacity-0 md:group-hover:opacity-100"
+                            aria-label="Edit"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteWord(word.id)}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all md:opacity-0 md:group-hover:opacity-100"
+                            aria-label="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}

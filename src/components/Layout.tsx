@@ -4,7 +4,10 @@ import { List, Plus, BookOpen } from 'lucide-react';
 export default function Layout() {
   const location = useLocation();
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    if (path === '/' && location.pathname.startsWith('/edit/')) return true;
+    return location.pathname === path;
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col max-w-md mx-auto">

@@ -10,6 +10,7 @@ export const router = createBrowserRouter([
     Component: Layout,
     children: [
       { path: "/", Component: AddWord },
+      { path: "/edit/:id", Component: AddWord },
       { path: "/list", Component: WordList },
       { path: "/review", Component: Review },
     ],

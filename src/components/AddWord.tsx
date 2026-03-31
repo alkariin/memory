@@ -1,13 +1,43 @@
-import { useState, type KeyboardEvent, type FocusEvent, type MouseEvent } from 'react';
+import { useState, useEffect, type KeyboardEvent, type FocusEvent, type MouseEvent } from 'react';
+import { useParams, useNavigate } from 'react-router';
 import { Check, X, Tag } from 'lucide-react';
 import { EASE, Word } from '@/shared/types';
 
 export default function AddWord() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const isEditing = Boolean(id);
+
   const [word, setWord] = useState('');
   const [correlation, setCorrelation] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [editingWord, setEditingWord] = useState<Word | null>(null);
+
+  // Load existing word when editing
+  useEffect(() => {
+    if (id) {
+      const storedWords: Word[] = JSON.parse(localStorage.getItem('words') || '[]');
+      const found = storedWords.find((w) => w.id === id);
+      if (found) {
+        setEditingWord(found);
+        setWord(found.word);
+        setCorrelation(found.correlation || '');
+        setTags(found.tags || []);
+      } else {
+        // Word not found, go back to list
+        navigate('/list');
+      }
+    } else {
+      // Reset form when switching from edit to add
+      setEditingWord(null);
+      setWord('');
+      setCorrelation('');
+      setTags([]);
+      setTagInput('');
+    }
+  }, [id, navigate]);
 
   const handleAddTag = (e?: KeyboardEvent | FocusEvent | MouseEvent) => {
     if (e) {
@@ -36,40 +66,56 @@ export default function AddWord() {
     
     if (!word.trim()) return;
 
-    const newWord: Word = {
-      id: Date.now().toString(),
-      word: word.trim(),
-      correlation: correlation.trim(),
-      date: new Date().toISOString().split('T')[0],
-      reviewCount: 0,
-      lastReviewedDate: null,
-      tags: tags,
-      iteration: 0,
-      ease: EASE.MEDIUM,
-      nextReviewDate: null,
-    };
+    const existingWords: Word[] = JSON.parse(localStorage.getItem('words') || '[]');
 
-    // Get existing words
-    const existingWords = JSON.parse(localStorage.getItem('words') || '[]');
-    const updatedWords = [newWord, ...existingWords];
-    localStorage.setItem('words', JSON.stringify(updatedWords));
+    if (isEditing && editingWord) {
+      // Update existing word
+      const updatedWords = existingWords.map((w) =>
+        w.id === editingWord.id
+          ? { ...w, word: word.trim(), correlation: correlation.trim(), tags }
+          : w
+      );
+      localStorage.setItem('words', JSON.stringify(updatedWords));
 
-    // Reset the form
-    setWord('');
-    setCorrelation('');
-    setTags([]);
-    setTagInput('');
-    
-    // Show success message
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 2000);
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        navigate('/list');
+      }, 1200);
+    } else {
+      // Add new word
+      const newWord: Word = {
+        id: Date.now().toString(),
+        word: word.trim(),
+        correlation: correlation.trim(),
+        date: new Date().toISOString().split('T')[0],
+        reviewCount: 0,
+        lastReviewedDate: null,
+        tags: tags,
+        iteration: 0,
+        ease: EASE.MEDIUM,
+        nextReviewDate: null,
+      };
+
+      const updatedWords = [newWord, ...existingWords];
+      localStorage.setItem('words', JSON.stringify(updatedWords));
+
+      // Reset the form
+      setWord('');
+      setCorrelation('');
+      setTags([]);
+      setTagInput('');
+      
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+    }
   };
 
   return (
     <div className="p-6">
       <div className="mb-8">
-        <h2 className="text-gray-900 mb-1">Add a word</h2>
-        <p className="text-gray-600 text-sm">Expand your vocabulary</p>
+        <h2 className="text-gray-900 mb-1">{isEditing ? 'Edit word' : 'Add a word'}</h2>
+        <p className="text-gray-600 text-sm">{isEditing ? 'Modify this word' : 'Expand your vocabulary'}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -138,19 +184,30 @@ export default function AddWord() {
           )}
         </div>
 
-        <button
-          type="submit"
-          className="w-full bg-orange-600 text-white py-3.5 rounded-lg hover:bg-orange-700 active:scale-[0.99] transition-all shadow-sm"
-        >
-          Add the word
-        </button>
+        <div className="flex gap-3">
+          {isEditing && (
+            <button
+              type="button"
+              onClick={() => navigate('/list')}
+              className="flex-1 bg-gray-200 text-gray-700 py-3.5 rounded-lg hover:bg-gray-300 active:scale-[0.99] transition-all"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="submit"
+            className="flex-1 bg-orange-600 text-white py-3.5 rounded-lg hover:bg-orange-700 active:scale-[0.99] transition-all shadow-sm"
+          >
+            {isEditing ? 'Save changes' : 'Add the word'}
+          </button>
+        </div>
       </form>
 
       {/* Success Message */}
       {showSuccess && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50">
           <Check className="w-5 h-5" />
-          <span>Word added successfully</span>
+          <span>{isEditing ? 'Word updated successfully' : 'Word added successfully'}</span>
         </div>
       )}
     </div>
