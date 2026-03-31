@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Check,
+  X,
   Eye,
   EyeOff,
   BookOpen,
@@ -17,11 +18,6 @@ type ReviewWord = Word & { reviewed: boolean };
 
 const INTERVAL = [0, 1, 3, 7, 14, 30, 60, 120, 240]
 
-const factorInterval = {
-  [EASE.EASY]: 1.5,
-  [EASE.MEDIUM]: 1,
-  [EASE.HARD]: 0.5,
-}
 
 export default function Review() {
   const [words, setWords] = useState<ReviewWord[]>([]);
@@ -87,21 +83,27 @@ export default function Review() {
     );
   };
 
-  const markAsReviewed = (difficulty: EASE) => {
+  const markAsReviewed = (known: boolean) => {
     const currentWord = words[currentIndex];
     const isTagFilterActive = filterTag !== null;
-    
-    // Only update iteration if NOT in tag filter mode
+    const result = known ? EASE.KNOWN : EASE.UNKNOWN;
+
+    // Known → advance iteration (spaced further apart)
+    // Unknown → reset iteration to 0 (review again soon)
     const currentIteration = currentWord.iteration || 0;
-    const nextIteration = difficulty === EASE.HARD || isTagFilterActive ? currentIteration : currentIteration + 1;
-    
-    // Calculate next review interval based on difficulty
-    const baseInterval = INTERVAL[Math.min(nextIteration, INTERVAL.length - 1)];
-    const adjustedInterval = Math.max(Math.round(baseInterval * factorInterval[difficulty]), 1);
-    
+    const nextIteration = known && !isTagFilterActive
+      ? currentIteration + 1
+      : known
+        ? currentIteration
+        : 0;
+
+    // Calculate next review interval
+    const interval = INTERVAL[Math.min(nextIteration, INTERVAL.length - 1)];
+    const nextInterval = Math.max(interval, 1);
+
     // Calculate next review date
     const nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() + adjustedInterval);
+    nextDate.setDate(nextDate.getDate() + nextInterval);
     const nextReviewDate = nextDate.toISOString().split("T")[0];
 
     const allWords = JSON.parse(
@@ -117,7 +119,7 @@ export default function Review() {
             .split("T")[0],
           nextReviewDate,
           iteration: nextIteration,
-          ease: difficulty,
+          ease: result,
         };
       }
       return w;
@@ -138,7 +140,7 @@ export default function Review() {
       .split("T")[0];
     updatedWords[currentIndex].nextReviewDate = nextReviewDate;
     updatedWords[currentIndex].iteration = nextIteration;
-    updatedWords[currentIndex].ease = difficulty;
+    updatedWords[currentIndex].ease = result;
     setWords(updatedWords);
 
     // Check if it was the last word
@@ -308,35 +310,11 @@ export default function Review() {
       {/* Controls */}
       <div className="space-y-4">
         <div className="text-center text-sm font-medium text-gray-700 mb-3">
-          How difficult was this word?
+          Did you remember this word?
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => markAsReviewed(EASE.EASY)}
-            disabled={currentWord.reviewed}
-            className={`flex-1 py-3.5 rounded-xl transition-all flex flex-col items-center justify-center gap-1 font-medium ${
-              currentWord.reviewed
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-green-20 text-gray-900 border-2 shadow-sm"
-            }`}
-          >
-            <Check className="w-5 h-5" />
-            <span className="text-sm">Easy</span>
-          </button>
-          <button
-            onClick={() => markAsReviewed(EASE.MEDIUM)}
-            disabled={currentWord.reviewed}
-            className={`flex-1 py-3.5 rounded-xl transition-all flex flex-col items-center justify-center gap-1 font-medium ${
-              currentWord.reviewed
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-orange-50 text-gray-900 border-2 shadow-sm"
-            }`}
-          >
-            <Check className="w-5 h-5" />
-            <span className="text-sm">Medium</span>
-          </button>
-          <button
-            onClick={() => markAsReviewed(EASE.HARD)}
+            onClick={() => markAsReviewed(false)}
             disabled={currentWord.reviewed}
             className={`flex-1 py-3.5 rounded-xl transition-all flex flex-col items-center justify-center gap-1 font-medium ${
               currentWord.reviewed
@@ -344,8 +322,20 @@ export default function Review() {
               : "bg-red-50 text-gray-900 border-2 shadow-sm"
             }`}
           >
+            <X className="w-5 h-5" />
+            <span className="text-sm">Again</span>
+          </button>
+          <button
+            onClick={() => markAsReviewed(true)}
+            disabled={currentWord.reviewed}
+            className={`flex-1 py-3.5 rounded-xl transition-all flex flex-col items-center justify-center gap-1 font-medium ${
+              currentWord.reviewed
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+              : "bg-green-50 text-gray-900 border-2 shadow-sm"
+            }`}
+          >
             <Check className="w-5 h-5" />
-            <span className="text-sm">Hard</span>
+            <span className="text-sm">Got it</span>
           </button>
         </div>
       </div>

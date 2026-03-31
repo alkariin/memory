@@ -1,7 +1,6 @@
 export enum EASE {
-  EASY = "EASY",
-  MEDIUM = "MEDIUM",
-  HARD = "HARD",
+  KNOWN = "KNOWN",
+  UNKNOWN = "UNKNOWN",
 }
 
 export interface Word {

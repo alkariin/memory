@@ -2,12 +2,22 @@
 
 Mobile app to help you remember words.
 
+## Features
+
+- **Add** words with a definition/example and optional tags
+- **Edit** existing words from the list (navigates to the edit form)
+- **Review** words using spaced repetition
+- **Filter** by tag in the list and start a tag-specific review session
+
 ## Review Logic
 
-The interval is calculated based on the current iteration and the ease of the word.
+Words are scheduled using a spaced repetition system based on a fixed interval table:
 
-if HARD the current iteration **does not increase**, and the next review date is set to today + interval / 2.
-if MEDIUM the  iteration **increase** and the next review date is today + interval.
-if EASY the iteration **increase** and the next review date is today + interval * 1.5.
+`[0, 1, 3, 7, 14, 30, 60, 120, 240]` days
 
-if the review is forced by tag, the iteration is not increased.
+Two choices are available during review:
+
+- **Got it** → the iteration increases, and the next review is scheduled further out.
+- **Again** → the iteration resets to 0, and the word comes back the next day.
+
+If the review is triggered by a tag filter, the iteration is not increased (even on "Got it").

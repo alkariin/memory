@@ -93,7 +93,7 @@ export default function AddWord() {
         lastReviewedDate: null,
         tags: tags,
         iteration: 0,
-        ease: EASE.MEDIUM,
+        ease: EASE.UNKNOWN,
         nextReviewDate: null,
       };
 
