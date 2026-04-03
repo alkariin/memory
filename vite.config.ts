@@ -10,6 +10,9 @@
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],
+        workbox: {
+          cleanupOutdatedCaches: true,
+        },
         devOptions: {
           enabled: true,
         },

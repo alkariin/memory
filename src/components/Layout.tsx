@@ -65,8 +65,6 @@ export default function Layout() {
         >
           <Settings className="w-5 h-5" />
         </button>
-      <header className="bg-white px-6 py-5 border-b border-gray-200">
-        <h1 className="text-center text-gray-900 tracking-tight">Vocabulary</h1>
       </header>
 
       {/* Settings Panel */}
