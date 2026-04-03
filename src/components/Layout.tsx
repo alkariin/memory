@@ -7,7 +7,10 @@ export default function Layout() {
   const [showSettings, setShowSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    if (path === '/' && location.pathname.startsWith('/edit/')) return true;
+    return location.pathname === path;
+  };
 
   const handleExportData = () => {
     const words = JSON.parse(localStorage.getItem('words') || '[]');
@@ -48,9 +51,10 @@ export default function Layout() {
   const triggerImport = () => {
     fileInputRef.current?.click();
   };
+  
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col max-w-md mx-auto">
+    <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto">
       {/* Header */}
       <header className="bg-white shadow-sm px-4 py-4 border-b flex items-center justify-between">
         <div className="w-10"></div>
@@ -61,6 +65,8 @@ export default function Layout() {
         >
           <Settings className="w-5 h-5" />
         </button>
+      <header className="bg-white px-6 py-5 border-b border-gray-200">
+        <h1 className="text-center text-gray-900 tracking-tight">Vocabulary</h1>
       </header>
 
       {/* Settings Panel */}
@@ -109,17 +115,17 @@ export default function Layout() {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 max-w-md mx-auto shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 max-w-md mx-auto">
         <div className="flex items-stretch">
           <Link
             to="/list"
             className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-3 transition-colors border-t-2 ${
               isActive('/list')
-                ? 'text-orange-600 border-orange-600 bg-orange-50'
-                : 'text-gray-500 border-transparent hover:text-gray-700'
+                ? 'text-orange-600 border-orange-600'
+                : 'text-gray-400 border-transparent hover:text-gray-700'
             }`}
           >
-            <List className="w-6 h-6" />
+            <List className="w-5 h-5" />
             <span className="text-xs">List</span>
           </Link>
 
@@ -127,11 +133,11 @@ export default function Layout() {
             to="/"
             className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-3 transition-colors border-t-2 ${
               isActive('/')
-                ? 'text-orange-600 border-orange-600 bg-orange-50'
-                : 'text-gray-500 border-transparent hover:text-gray-700'
+                ? 'text-orange-600 border-orange-600'
+                : 'text-gray-400 border-transparent hover:text-gray-700'
             }`}
           >
-            <Plus className="w-6 h-6" />
+            <Plus className="w-5 h-5" />
             <span className="text-xs">Add</span>
           </Link>
 
@@ -139,11 +145,11 @@ export default function Layout() {
             to="/review"
             className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-3 transition-colors border-t-2 ${
               isActive('/review')
-                ? 'text-orange-600 border-orange-600 bg-orange-50'
-                : 'text-gray-500 border-transparent hover:text-gray-700'
+                ? 'text-orange-600 border-orange-600'
+                : 'text-gray-400 border-transparent hover:text-gray-700'
             }`}
           >
-            <BookOpen className="w-6 h-6" />
+            <BookOpen className="w-5 h-5" />
             <span className="text-xs">Review</span>
           </Link>
         </div>
