@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router';
-import { List, Plus, BookOpen, Settings, X } from 'lucide-react';
+import { List, Plus, BookOpen, Settings, X, Download, Upload } from 'lucide-react';
 import { useState, useRef } from 'react';
 
 export default function Layout() {
@@ -74,25 +74,26 @@ export default function Layout() {
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowSettings(false)}></div>
 
           {/* Panel */}
-          <div className="absolute right-0 top-0 h-full w-64 bg-white shadow-xl">
+          <div className="absolute right-0 top-0 h-full w-52 bg-white shadow-xl border-l-2 border-gray-300">
             <div className="p-4 border-b flex items-center justify-between">
               <h2>Paramètres</h2>
               <button onClick={() => setShowSettings(false)} className="p-2 text-gray-500 hover:text-gray-700">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-4">
-              <h3 className="text-sm mb-2">Données</h3>
+            <div className="p-4 space-y-3">
               <button
                 onClick={handleExportData}
-                className="w-full text-left py-2 text-gray-600 hover:text-gray-900"
+                className="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 rounded-lg border border-gray-200 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 transition-colors"
               >
+                <Download className="w-4 h-4" />
                 Exporter mes mots
               </button>
               <button
                 onClick={triggerImport}
-                className="w-full text-left py-2 text-gray-600 hover:text-gray-900"
+                className="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 rounded-lg border border-gray-200 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 transition-colors"
               >
+                <Upload className="w-4 h-4" />
                 Importer mes mots
               </button>
               <input
