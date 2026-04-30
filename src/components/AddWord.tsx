@@ -135,7 +135,7 @@ export default function AddWord() {
         tags: tags,
         iteration: 0,
         ease: EASE.UNKNOWN,
-        nextReviewDate: null,
+        nextReviewDate: (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })(),
       };
 
       const updatedWords = [newWord, ...existingWords];
