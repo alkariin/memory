@@ -60,7 +60,7 @@ export default function Review() {
       } else if ("type" in filter && filter.type === "tag") {
         setFilterLabel(filter.tag);
         setIsFilteredSession(true);
-        setPreserveSchedule(false);
+        setPreserveSchedule(filter.preserveSchedule);
         const filteredWords = storedWords.filter((w: Word) => w.tags?.includes(filter.tag));
         const updatedWords: ReviewWord[] = filteredWords.map((w: Word) => ({ ...w, reviewed: false }));
         setWords(updatedWords);
@@ -69,7 +69,7 @@ export default function Review() {
         const legacyTag = filter.tag || null;
         setFilterLabel(legacyTag);
         setIsFilteredSession(Boolean(legacyTag));
-        setPreserveSchedule(false);
+        setPreserveSchedule(Boolean(legacyTag));
         const filteredWords = legacyTag
           ? storedWords.filter((w: Word) => w.tags?.includes(legacyTag))
           : [];
@@ -119,8 +119,8 @@ export default function Review() {
     const currentWord = words[currentIndex];
     const result = known ? EASE.KNOWN : EASE.UNKNOWN;
 
-    // Known → advance iteration (spaced further apart)
-    // Unknown → reset iteration to 0 (review again soon)
+    // Known -> advance iteration (spaced further apart)
+    // Unknown -> drop by 2 iterations (floor at 0)
     const currentIteration = currentWord.iteration || 0;
     const nextIteration = preserveSchedule
       ? currentIteration
@@ -128,7 +128,7 @@ export default function Review() {
         ? currentIteration
         : known
           ? currentIteration + 1
-          : 0;
+          : Math.max(0, currentIteration - 2);
 
     // Calculate next review interval
     const interval = INTERVAL[Math.min(nextIteration, INTERVAL.length - 1)];

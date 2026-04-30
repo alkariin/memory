@@ -120,6 +120,7 @@ export default function WordList() {
         const payload: ReviewFilterPayload = {
           type: 'tag',
           tag: selectedTag,
+          preserveSchedule: true,
         };
         localStorage.setItem('reviewFilter', JSON.stringify(payload));
       }

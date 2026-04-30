@@ -21,12 +21,8 @@ Behavior depends on how the review session is started:
 
 - **Standard review** (bottom nav `Review`)
   - **Got it** -> `iteration` increases by 1, `nextReviewDate` is recalculated.
-  - **Again** -> `iteration` resets to `0`, `nextReviewDate` is recalculated.
+  - **Again** -> `iteration` decreases by 2 (minimum `0`), `nextReviewDate` is recalculated.
 
-- **Custom tag review** (from `WordList` with a user-defined tag)
-  - **Got it** -> `iteration` stays unchanged, `nextReviewDate` is recalculated.
-  - **Again** -> `iteration` resets to `0`, `nextReviewDate` is recalculated.
-
-- **Predefined review** (`Today` / `Tomorrow`)
+- **Custom tag review** (from `WordList`)
   - Runs in **no-impact mode**.
   - `iteration` and `nextReviewDate` do not change, regardless of **Got it** or **Again**.

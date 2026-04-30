@@ -25,6 +25,7 @@ export type ReviewFilterPayload =
   | {
       type: "tag";
       tag: string;
+      preserveSchedule: true;
     }
   | {
       type: "predefined";
