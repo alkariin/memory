@@ -195,19 +195,14 @@ export default function Review() {
             {currentIndex + 1} / {words.length}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <p className="text-gray-500 text-sm">
-            {filterTag
-              ? `Reviewing tag: ${filterTag}`
-              : "Your words of the day"}
-          </p>
-          {filterTag && (
+        {filterTag && (
+          <div className="flex items-center gap-2 mt-1">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-600 rounded text-xs border border-orange-200">
               <Tag className="w-3 h-3" />
               {filterTag}
             </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Card */}
@@ -341,17 +336,6 @@ export default function Review() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="mt-6 p-4 bg-white rounded-lg text-center border border-gray-200">
-        <p className="text-sm text-gray-500">
-          <span className="font-semibold text-gray-900">
-            {words.filter((w) => w.reviewed).length}
-          </span>{" "}
-          /{" "}
-          <span className="font-semibold text-gray-900">{words.length}</span>{" "}
-          words reviewed
-        </p>
-      </div>
 
       {/* Completion Dialog */}
       {showCompletionDialog && (

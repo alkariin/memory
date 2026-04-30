@@ -155,8 +155,7 @@ export default function AddWord() {
   return (
     <div className="p-6">
       <div className="mb-8">
-        <h2 className="text-gray-900 mb-1">{isEditing ? 'Edit word' : 'Add a word'}</h2>
-        <p className="text-gray-500 text-sm">{isEditing ? 'Modify this word' : 'Expand your vocabulary'}</p>
+        <h2 className="text-gray-900">{isEditing ? 'Edit word' : 'Add a word'}</h2>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">

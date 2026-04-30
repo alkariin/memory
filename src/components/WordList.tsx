@@ -129,7 +129,6 @@ export default function WordList() {
             {words.length} {words.length > 1 ? 'words' : 'word'}
           </span>
         </div>
-        <p className="text-gray-500 text-sm">All your words to learn</p>
       </div>
 
       {/* Filter by tags */}
