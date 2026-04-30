@@ -10,6 +10,9 @@
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],
+        workbox: {
+          cleanupOutdatedCaches: true,
+        },
         devOptions: {
           enabled: true,
         },
@@ -19,7 +22,7 @@
           description: 'Expand your vocabulary and learn new words',
           theme_color: '#ea580c',
           background_color: '#ffffff',
-          start_url: '/',
+          start_url: '.',
           scope: "/",
           display: 'standalone',
           icons: [
