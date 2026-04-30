@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Trash2, List, Tag, Filter, RotateCcw, Clock, Pencil, BookOpen } from 'lucide-react';
+import { Calendar, Trash2, List, Tag, Filter, Search, RotateCcw, Clock, Pencil, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { EASE, PREDEFINED_REVIEW_FILTER, ReviewFilterPayload, Word } from '@/shared/types';
 
@@ -37,11 +37,14 @@ export default function WordList() {
   const [groupedWords, setGroupedWords] = useState<GroupedWords>({});
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
+  const [showTagFilters, setShowTagFilters] = useState(true);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const canStartReview = Boolean(selectedTag && words.length > 0);
 
   useEffect(() => {
     loadWords();
-  }, [selectedTag]);
+  }, [selectedTag, searchQuery]);
 
   const loadWords = () => {
     const storedWords = JSON.parse(localStorage.getItem('words') || '[]');
@@ -73,14 +76,23 @@ export default function WordList() {
     });
     setAllTags(Array.from(tags).sort());
     
-    // Filter by tag if a tag is selected
-    const filteredWords = selectedTag
+    // Filter by selected tag first
+    const tagFilteredWords = selectedTag
       ? selectedTag === PREDEFINED_REVIEW_FILTER.TODAY
         ? migratedWords.filter((w: Word) => snapshots[today]?.includes(w.id))
         : selectedTag === PREDEFINED_REVIEW_FILTER.TOMORROW
           ? migratedWords.filter((w: Word) => w.nextReviewDate === getTomorrowDate())
           : migratedWords.filter((w: Word) => w.tags?.includes(selectedTag))
       : migratedWords;
+
+    // Then filter by search query on word or correlation
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const filteredWords = normalizedQuery
+      ? tagFilteredWords.filter((w: Word) =>
+          w.word.toLowerCase().includes(normalizedQuery)
+          || w.correlation.toLowerCase().includes(normalizedQuery)
+        )
+      : tagFilteredWords;
     
     setWords(filteredWords);
 
@@ -126,6 +138,30 @@ export default function WordList() {
       }
       navigate('/review');
     }
+  };
+
+  const toggleTagFilters = () => {
+    if (showTagFilters) {
+      setShowTagFilters(false);
+      setSelectedTag(null);
+      return;
+    }
+
+    setShowTagFilters(true);
+    setShowSearch(false);
+    setSearchQuery('');
+  };
+
+  const toggleSearch = () => {
+    if (showSearch) {
+      setShowSearch(false);
+      setSearchQuery('');
+      return;
+    }
+
+    setShowSearch(true);
+    setShowTagFilters(false);
+    setSelectedTag(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -189,12 +225,32 @@ export default function WordList() {
         </div>
       </div>
 
-      {/* Filter by tags */}
+      {/* Filter and search controls */}
       <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-500">Filter by tag</span>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={toggleTagFilters}
+                className={`inline-flex items-center gap-1.5 px-6 py-3 rounded-lg text-sm transition-all ${
+                  showTagFilters
+                    ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                <Filter className="w-4 h-4" />
+                Filter
+              </button>
+              <button
+                onClick={toggleSearch}
+                className={`inline-flex items-center gap-1.5 px-6 py-3 rounded-lg text-sm transition-all ${
+                  showSearch
+                    ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                <Search className="w-4 h-4" />
+                Search
+              </button>
             </div>
             <button
               onClick={startReviewWithTag}
@@ -208,6 +264,18 @@ export default function WordList() {
               Review
             </button>
           </div>
+          {showSearch && (
+            <div className="mb-3">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search in words or definitions..."
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+            </div>
+          )}
+          {showTagFilters && (
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setSelectedTag(null)}
@@ -256,6 +324,7 @@ export default function WordList() {
               </button>
             ))}
           </div>
+          )}
       </div>
 
       {words.length === 0 ? (
@@ -264,7 +333,11 @@ export default function WordList() {
             <List className="w-8 h-8 text-orange-300" />
           </div>
           <p className="text-gray-500 mb-1">
-            {selectedTag ? `No words with the tag "${getFilterLabel(selectedTag)}"` : 'No words yet'}
+            {searchQuery
+              ? `No words match "${searchQuery}"`
+              : selectedTag
+                ? `No words with the tag "${getFilterLabel(selectedTag)}"`
+                : 'No words yet'}
           </p>
           <p className="text-sm text-gray-400">
             {selectedTag ? 'Try another filter' : 'Add your first word'}
