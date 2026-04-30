@@ -11,6 +11,8 @@
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],
         workbox: {
+          clientsClaim: true,
+          skipWaiting: true,
           cleanupOutdatedCaches: true,
         },
         devOptions: {
@@ -20,6 +22,7 @@
           name: 'Memory - Vocabulary Builder',
           short_name: 'Memory',
           description: 'Expand your vocabulary and learn new words',
+          id: '/',
           theme_color: '#ea580c',
           background_color: '#ffffff',
           start_url: '.',
