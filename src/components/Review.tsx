@@ -227,7 +227,7 @@ export default function Review() {
             {!hasCorrelation || showWord ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center">
                 <span className="text-xs uppercase tracking-wide text-gray-400 mb-4">Word</span>
-                <div className="text-4xl text-gray-900 mb-8 font-bold">
+                <div className="text-2xl text-gray-900 mb-8 font-bold">
                   {currentWord.word}
                 </div>
                 {hasCorrelation && (
