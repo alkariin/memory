@@ -76,7 +76,7 @@ export default function Layout() {
           {/* Panel */}
           <div className="absolute right-0 top-0 h-full w-52 bg-white shadow-xl border-l-2 border-gray-300">
             <div className="p-4 border-b flex items-center justify-between">
-              <h2>Paramètres</h2>
+              <h2>Settings</h2>
               <button onClick={() => setShowSettings(false)} className="p-2 text-gray-500 hover:text-gray-700">
                 <X className="w-5 h-5" />
               </button>
@@ -87,14 +87,14 @@ export default function Layout() {
                 className="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 rounded-lg border border-gray-200 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 transition-colors"
               >
                 <Download className="w-4 h-4" />
-                Exporter mes mots
+                Export my words
               </button>
               <button
                 onClick={triggerImport}
                 className="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 rounded-lg border border-gray-200 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 transition-colors"
               >
                 <Upload className="w-4 h-4" />
-                Importer mes mots
+                Import my words
               </button>
               <input
                 ref={fileInputRef}

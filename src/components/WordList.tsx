@@ -1,11 +1,35 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Trash2, List, Tag, Filter, RotateCcw, Clock, Pencil, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { Word } from '@/shared/types';
+import { EASE, PREDEFINED_REVIEW_FILTER, ReviewFilterPayload, Word } from '@/shared/types';
 
 interface GroupedWords {
   [date: string]: Word[];
 }
+
+const DAILY_REVIEW_SNAPSHOTS_KEY = 'dailyReviewSnapshots';
+const TODAY_FILTER_LABEL = "Today";
+const TOMORROW_FILTER_LABEL = 'Tomorrow';
+
+const getIsoDate = (date: Date) => date.toISOString().split('T')[0];
+
+const getTodayDate = () => getIsoDate(new Date());
+
+const getTomorrowDate = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return getIsoDate(tomorrow);
+};
+
+const isPredefinedFilter = (tag: string | null): tag is PREDEFINED_REVIEW_FILTER => {
+  return tag === PREDEFINED_REVIEW_FILTER.TODAY || tag === PREDEFINED_REVIEW_FILTER.TOMORROW;
+};
+
+const getFilterLabel = (tag: string | null) => {
+  if (tag === PREDEFINED_REVIEW_FILTER.TODAY) return TODAY_FILTER_LABEL;
+  if (tag === PREDEFINED_REVIEW_FILTER.TOMORROW) return TOMORROW_FILTER_LABEL;
+  return tag;
+};
 
 export default function WordList() {
   const navigate = useNavigate();
@@ -13,6 +37,7 @@ export default function WordList() {
   const [groupedWords, setGroupedWords] = useState<GroupedWords>({});
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
+  const canStartReview = Boolean(selectedTag && words.length > 0);
 
   useEffect(() => {
     loadWords();
@@ -25,9 +50,22 @@ export default function WordList() {
       ...w,
       reviewCount: w.reviewCount || 0,
       lastReviewedDate: w.lastReviewedDate || null,
+      nextReviewDate: w.nextReviewDate || null,
       tags: w.tags || [],
+      iteration: w.iteration || 0,
+      ease: w.ease || EASE.UNKNOWN,
     }));
-    
+
+    const snapshots = JSON.parse(localStorage.getItem(DAILY_REVIEW_SNAPSHOTS_KEY) || '{}');
+    const today = getTodayDate();
+
+    if (!snapshots[today]) {
+      snapshots[today] = migratedWords
+        .filter((w: Word) => !w.nextReviewDate || w.nextReviewDate <= today)
+        .map((w: Word) => w.id);
+      localStorage.setItem(DAILY_REVIEW_SNAPSHOTS_KEY, JSON.stringify(snapshots));
+    }
+
     // Extract all unique tags
     const tags = new Set<string>();
     migratedWords.forEach((w: Word) => {
@@ -37,7 +75,11 @@ export default function WordList() {
     
     // Filter by tag if a tag is selected
     const filteredWords = selectedTag
-      ? migratedWords.filter((w: Word) => w.tags?.includes(selectedTag))
+      ? selectedTag === PREDEFINED_REVIEW_FILTER.TODAY
+        ? migratedWords.filter((w: Word) => snapshots[today]?.includes(w.id))
+        : selectedTag === PREDEFINED_REVIEW_FILTER.TOMORROW
+          ? migratedWords.filter((w: Word) => w.nextReviewDate === getTomorrowDate())
+          : migratedWords.filter((w: Word) => w.tags?.includes(selectedTag))
       : migratedWords;
     
     setWords(filteredWords);
@@ -65,7 +107,22 @@ export default function WordList() {
 
   const startReviewWithTag = () => {
     if (selectedTag) {
-      localStorage.setItem('reviewFilter', JSON.stringify({ tag: selectedTag }));
+      if (isPredefinedFilter(selectedTag)) {
+        const payload: ReviewFilterPayload = {
+          type: 'predefined',
+          tag: selectedTag,
+          label: selectedTag === PREDEFINED_REVIEW_FILTER.TODAY ? TODAY_FILTER_LABEL : TOMORROW_FILTER_LABEL,
+          wordIds: words.map((word) => word.id),
+          preserveSchedule: true,
+        };
+        localStorage.setItem('reviewFilter', JSON.stringify(payload));
+      } else {
+        const payload: ReviewFilterPayload = {
+          type: 'tag',
+          tag: selectedTag,
+        };
+        localStorage.setItem('reviewFilter', JSON.stringify(payload));
+      }
       navigate('/review');
     }
   };
@@ -81,7 +138,7 @@ export default function WordList() {
     } else if (date.toDateString() === yesterday.toDateString()) {
       return 'Yesterday';
     } else {
-      return date.toLocaleDateString('fr-CH', { 
+      return date.toLocaleDateString('en-GB', {
         day: 'numeric',
         month: 'long',
         year: 'numeric'
@@ -102,7 +159,7 @@ export default function WordList() {
     } else if (date.toDateString() === yesterday.toDateString()) {
       return 'yesterday';
     } else {
-      return 'on ' + date.toLocaleDateString('fr-CH', {
+      return 'on ' + date.toLocaleDateString('en-GB', {
         day: 'numeric',
         month: 'short',
       });
@@ -113,7 +170,7 @@ export default function WordList() {
     if (!dateString) return null;
     
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-CH', {
+    return date.toLocaleDateString('en-GB', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -132,22 +189,23 @@ export default function WordList() {
       </div>
 
       {/* Filter by tags */}
-      {allTags.length > 0 && (
-        <div className="mb-6">
+      <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-gray-400" />
               <span className="text-sm text-gray-500">Filter by tag</span>
             </div>
-            {selectedTag && words.length > 0 && (
-              <button
-                onClick={startReviewWithTag}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-all"
-              >
-                <BookOpen className="w-4 h-4" />
-                Review
-              </button>
-            )}
+            <button
+              onClick={startReviewWithTag}
+              disabled={!canStartReview}
+              tabIndex={canStartReview ? 0 : -1}
+              aria-hidden={!canStartReview}
+              style={{ visibility: canStartReview ? 'visible' : 'hidden' }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-all disabled:pointer-events-none"
+            >
+              <BookOpen className="w-4 h-4" />
+              Review
+            </button>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -159,6 +217,28 @@ export default function WordList() {
               }`}
             >
               All
+            </button>
+            <button
+              onClick={() => setSelectedTag(selectedTag === PREDEFINED_REVIEW_FILTER.TODAY ? null : PREDEFINED_REVIEW_FILTER.TODAY)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all ${
+                selectedTag === PREDEFINED_REVIEW_FILTER.TODAY
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100'
+              }`}
+            >
+              <Tag className="w-3 h-3" />
+              {TODAY_FILTER_LABEL}
+            </button>
+            <button
+              onClick={() => setSelectedTag(selectedTag === PREDEFINED_REVIEW_FILTER.TOMORROW ? null : PREDEFINED_REVIEW_FILTER.TOMORROW)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all ${
+                selectedTag === PREDEFINED_REVIEW_FILTER.TOMORROW
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100'
+              }`}
+            >
+              <Tag className="w-3 h-3" />
+              {TOMORROW_FILTER_LABEL}
             </button>
             {allTags.map((tag) => (
               <button
@@ -175,8 +255,7 @@ export default function WordList() {
               </button>
             ))}
           </div>
-        </div>
-      )}
+      </div>
 
       {words.length === 0 ? (
         <div className="text-center py-16">
@@ -184,7 +263,7 @@ export default function WordList() {
             <List className="w-8 h-8 text-orange-300" />
           </div>
           <p className="text-gray-500 mb-1">
-            {selectedTag ? `No words with the tag "${selectedTag}"` : 'No words yet'}
+            {selectedTag ? `No words with the tag "${getFilterLabel(selectedTag)}"` : 'No words yet'}
           </p>
           <p className="text-sm text-gray-400">
             {selectedTag ? 'Try another filter' : 'Add your first word'}
