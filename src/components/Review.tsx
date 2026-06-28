@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Check,
   X,
@@ -13,22 +13,22 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { EASE, ReviewFilterPayload, Word } from "@/shared/types";
+import { groupWordsByTag, ReviewWord, TagGroup } from "@/shared/groupWordsByTag";
 
-// Local type for Review component with UI state
-type ReviewWord = Word & { reviewed: boolean };
-
-const INTERVAL = [0, 1, 3, 7, 14, 30, 60, 120, 240]
+const INTERVAL = [0, 1, 3, 7, 14, 30, 60, 120, 240];
 
 
 export default function Review() {
   const navigate = useNavigate();
   const [words, setWords] = useState<ReviewWord[]>([]);
+  const [tagGroups, setTagGroups] = useState<TagGroup[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showWord, setShowWord] = useState(false);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [filterLabel, setFilterLabel] = useState<string | null>(null);
   const [isFilteredSession, setIsFilteredSession] = useState(false);
   const [preserveSchedule, setPreserveSchedule] = useState(false);
+  const [tagTransition, setTagTransition] = useState(false);
 
   useEffect(() => {
     loadWords();
@@ -42,6 +42,9 @@ export default function Review() {
     // Get today's date in ISO format (YYYY-MM-DD)
     const today = new Date().toISOString().split("T")[0];
     
+    let rawWords: (Word & { reviewed: boolean })[] = [];
+    let tagFilter: string | null = null;
+
     // Check if there's an active filter
     const filterData = localStorage.getItem("reviewFilter");
     if (filterData) {
@@ -55,26 +58,25 @@ export default function Review() {
         const orderedWords = filter.wordIds
           .map((id) => filteredWords.find((w: Word) => w.id === id))
           .filter((w): w is Word => Boolean(w));
-        const updatedWords: ReviewWord[] = orderedWords.map((w: Word) => ({ ...w, reviewed: false }));
-        setWords(updatedWords);
+        rawWords = orderedWords.map((w: Word) => ({ ...w, reviewed: false }));
       } else if ("type" in filter && filter.type === "tag") {
         setFilterLabel(filter.tag);
         setIsFilteredSession(true);
         setPreserveSchedule(filter.preserveSchedule);
+        tagFilter = filter.tag;
         const filteredWords = storedWords.filter((w: Word) => w.tags?.includes(filter.tag));
-        const updatedWords: ReviewWord[] = filteredWords.map((w: Word) => ({ ...w, reviewed: false }));
-        setWords(updatedWords);
+        rawWords = filteredWords.map((w: Word) => ({ ...w, reviewed: false }));
       } else {
         // Backward compatibility for older payloads: { tag: string }
         const legacyTag = filter.tag || null;
         setFilterLabel(legacyTag);
         setIsFilteredSession(Boolean(legacyTag));
         setPreserveSchedule(Boolean(legacyTag));
+        tagFilter = legacyTag;
         const filteredWords = legacyTag
           ? storedWords.filter((w: Word) => w.tags?.includes(legacyTag))
           : [];
-        const updatedWords: ReviewWord[] = filteredWords.map((w: Word) => ({ ...w, reviewed: false }));
-        setWords(updatedWords);
+        rawWords = filteredWords.map((w: Word) => ({ ...w, reviewed: false }));
       }
 
       localStorage.removeItem("reviewFilter"); // Clear filter after use
@@ -82,26 +84,43 @@ export default function Review() {
       setFilterLabel(null);
       setIsFilteredSession(false);
       setPreserveSchedule(false);
-      // Filter words that are due for review:
-      // 1. Never reviewed (nextReviewDate is null), OR
-      // 2. nextReviewDate is today or in the past
       const wordsToReview = storedWords.filter((w: Word) => {
         return !w.nextReviewDate || w.nextReviewDate <= today;
       });
-
-      // Add local reviewed property for UI state
-      const updatedWords: ReviewWord[] = wordsToReview.map((w: Word) => ({
-        ...w,
-        reviewed: false
-      }));
-
-      setWords(updatedWords);
+      rawWords = wordsToReview.map((w: Word) => ({ ...w, reviewed: false }));
     }
+
+    // Group by tag
+    const { grouped, tagGroups: groups } = groupWordsByTag(rawWords, tagFilter);
+    setWords(grouped);
+    setTagGroups(groups);
   };
 
   const handleFlip = () => {
     setShowWord(!showWord);
   };
+
+  // Find the next unreviewed word, preferring within current tag group
+  const findNextUnreviewed = useCallback((updatedWords: ReviewWord[], fromIndex: number): number => {
+    // First try to find next unreviewed in same tag group
+    const currentTag = updatedWords[fromIndex]?.assignedTag;
+    if (currentTag) {
+      for (let i = fromIndex + 1; i < updatedWords.length; i++) {
+        if (!updatedWords[i].reviewed && updatedWords[i].assignedTag === currentTag) {
+          return i;
+        }
+      }
+    }
+    // Then find any next unreviewed (next tag group)
+    for (let i = fromIndex + 1; i < updatedWords.length; i++) {
+      if (!updatedWords[i].reviewed) return i;
+    }
+    // Wrap around
+    for (let i = 0; i < fromIndex; i++) {
+      if (!updatedWords[i].reviewed) return i;
+    }
+    return fromIndex;
+  }, []);
 
   const handleNext = () => {
     setShowWord(false);
@@ -182,7 +201,19 @@ export default function Review() {
     if (updatedWords.every((w) => w.reviewed)) {
       setShowCompletionDialog(true);
     } else {
-      handleNext();
+      // Find next unreviewed word
+      const nextIndex = findNextUnreviewed(updatedWords, currentIndex);
+      const currentTag = updatedWords[currentIndex].assignedTag;
+      const nextTag = updatedWords[nextIndex].assignedTag;
+
+      // Show tag transition animation if changing groups
+      if (currentTag !== nextTag) {
+        setTagTransition(true);
+        setTimeout(() => setTagTransition(false), 1500);
+      }
+
+      setShowWord(false);
+      setCurrentIndex(nextIndex);
     }
   };
 
@@ -298,7 +329,7 @@ export default function Review() {
 
             {/* Tags */}
             {currentWord.tags && currentWord.tags.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-1.5 mt-4">
+              <div className={`flex flex-wrap justify-center gap-1.5 mt-4 ${tagTransition ? "animate-tag-pulse" : ""}`}>
                 {currentWord.tags.map((tag) => (
                   <span
                     key={tag}
@@ -330,20 +361,35 @@ export default function Review() {
         </div>
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress Bar - grouped by tag */}
       <div className="mb-6">
-        <div className="flex gap-1.5">
-          {words.map((word, index) => (
-            <div
-              key={index}
-              className={`h-1.5 flex-1 rounded-full transition-all ${
-                word.reviewed
-                  ? "bg-orange-600"
-                  : index === currentIndex
-                    ? "bg-orange-500"
-                    : "bg-gray-200"
-              }`}
-            />
+        <div className="flex gap-2">
+          {tagGroups.map((group) => (
+            <div key={group.tag} className="flex-1 flex flex-col gap-1">
+              {tagGroups.length > 1 && (
+                <span className="text-[10px] text-gray-400 truncate text-center">
+                  {group.tag}
+                </span>
+              )}
+              <div className="flex gap-0.5">
+                {group.wordIds.map((id) => {
+                  const wordIdx = words.findIndex((w) => w.id === id);
+                  const word = words[wordIdx];
+                  return (
+                    <div
+                      key={id}
+                      className={`h-1.5 flex-1 rounded-full transition-all ${
+                        word?.reviewed
+                          ? "bg-orange-600"
+                          : wordIdx === currentIndex
+                            ? "bg-orange-500"
+                            : "bg-gray-200"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
           ))}
         </div>
       </div>
