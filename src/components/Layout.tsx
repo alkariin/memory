@@ -1,11 +1,30 @@
 import { Outlet, Link, useLocation } from 'react-router';
 import { List, Plus, BookOpen, Settings, X, Download, Upload } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { Word } from '@/shared/types';
+
+const DAILY_REVIEW_SNAPSHOTS_KEY = 'dailyReviewSnapshots';
+
+function ensureDailySnapshot() {
+  const today = new Date().toISOString().split('T')[0];
+  const snapshots = JSON.parse(localStorage.getItem(DAILY_REVIEW_SNAPSHOTS_KEY) || '{}');
+  if (!snapshots[today]) {
+    const storedWords: Word[] = JSON.parse(localStorage.getItem('words') || '[]');
+    snapshots[today] = storedWords
+      .filter((w) => !w.nextReviewDate || w.nextReviewDate <= today)
+      .map((w) => w.id);
+    localStorage.setItem(DAILY_REVIEW_SNAPSHOTS_KEY, JSON.stringify(snapshots));
+  }
+}
 
 export default function Layout() {
   const location = useLocation();
   const [showSettings, setShowSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    ensureDailySnapshot();
+  }, []);
 
   const isActive = (path: string) => {
     if (path === '/' && location.pathname.startsWith('/edit/')) return true;
