@@ -279,7 +279,7 @@ export default function WordList() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setSelectedTag(null)}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-sm ${
                 selectedTag === null
                   ? 'bg-orange-600 text-white'
                   : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
@@ -289,7 +289,7 @@ export default function WordList() {
             </button>
             <button
               onClick={() => setSelectedTag(selectedTag === PREDEFINED_REVIEW_FILTER.TODAY ? null : PREDEFINED_REVIEW_FILTER.TODAY)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${
                 selectedTag === PREDEFINED_REVIEW_FILTER.TODAY
                   ? 'bg-orange-600 text-white'
                   : 'bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100'
@@ -300,7 +300,7 @@ export default function WordList() {
             </button>
             <button
               onClick={() => setSelectedTag(selectedTag === PREDEFINED_REVIEW_FILTER.TOMORROW ? null : PREDEFINED_REVIEW_FILTER.TOMORROW)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${
                 selectedTag === PREDEFINED_REVIEW_FILTER.TOMORROW
                   ? 'bg-orange-600 text-white'
                   : 'bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100'
@@ -313,7 +313,7 @@ export default function WordList() {
               <button
                 key={tag}
                 onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${
                   selectedTag === tag
                     ? 'bg-orange-600 text-white'
                     : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
