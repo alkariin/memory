@@ -30,7 +30,9 @@ describe("groupWordsByTag", () => {
 
     expect(tagGroups).toHaveLength(2);
     expect(tagGroups[0].tag).toBe("A");
-    expect(tagGroups[0].wordIds).toEqual(["w1", "w3"]);
+    expect(tagGroups[0].wordIds).toContain("w1");
+    expect(tagGroups[0].wordIds).toContain("w3");
+    expect(tagGroups[0].wordIds).toHaveLength(2);
     expect(tagGroups[1].tag).toBe("B");
     expect(tagGroups[1].wordIds).toEqual(["w2"]);
   });
@@ -59,7 +61,10 @@ describe("groupWordsByTag", () => {
     // All words should be in group A since they all have tag A
     expect(tagGroups).toHaveLength(1);
     expect(tagGroups[0].tag).toBe("A");
-    expect(tagGroups[0].wordIds).toEqual(["w1", "w2", "w3"]);
+    expect(tagGroups[0].wordIds).toContain("w1");
+    expect(tagGroups[0].wordIds).toContain("w2");
+    expect(tagGroups[0].wordIds).toContain("w3");
+    expect(tagGroups[0].wordIds).toHaveLength(3);
 
     // All words should have assignedTag = A
     expect(grouped.every((w) => w.assignedTag === "A")).toBe(true);

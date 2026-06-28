@@ -20,10 +20,17 @@ export function groupWordsByTag(
   words: (Word & { reviewed: boolean })[],
   filterTag?: string | null,
 ): { grouped: ReviewWord[]; tagGroups: TagGroup[] } {
+  // Shuffle words before grouping so order within each tag is random
+  const shuffled = [...words];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
   const tagMap = new Map<string, string[]>();
   const wordTagAssignment = new Map<string, string>();
 
-  for (const word of words) {
+  for (const word of shuffled) {
     let tag: string;
     if (filterTag && word.tags?.includes(filterTag)) {
       tag = filterTag;
