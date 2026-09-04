@@ -1,4 +1,4 @@
-import { TagGroup } from "./groupWordsByTag";
+import { CategoryGroup } from "./groupWordsByCategory";
 
 /**
  * Total number of per-word segments the progress row can render legibly.
@@ -25,7 +25,7 @@ export function maxSegmentsPerGroup(groupCount: number): number {
  * The whole row then switches to continuous progress bars, so every group
  * keeps the same look instead of mixing both styles side by side.
  */
-export function shouldUseContinuousBars(tagGroups: TagGroup[]): boolean {
-  const limit = maxSegmentsPerGroup(tagGroups.length);
-  return tagGroups.some((group) => group.wordIds.length > limit);
+export function shouldUseContinuousBars(categoryGroups: CategoryGroup[]): boolean {
+  const limit = maxSegmentsPerGroup(categoryGroups.length);
+  return categoryGroups.some((group) => group.wordIds.length > limit);
 }

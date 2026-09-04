@@ -4,10 +4,10 @@ Mobile app to help you remember words.
 
 ## Features
 
-- **Add** words with a definition/example and optional tags
+- **Add** words with a definition/example and an optional category (one per word)
 - **Edit** existing words from the list (navigates to the edit form)
 - **Review** words using spaced repetition
-- **Filter** by tag in the list and start a tag-specific review session
+- **Filter** by category in the list and start a category-specific review session
 
 ## Review Logic
 
@@ -23,6 +23,13 @@ Behavior depends on how the review session is started:
   - **Got it** -> `iteration` increases by 1, `nextReviewDate` is recalculated.
   - **Again** -> `iteration` decreases by 2 (minimum `0`), `nextReviewDate` is recalculated.
 
-- **Custom tag review** (from `WordList`)
+- **Custom category review** (from `WordList`)
   - Runs in **no-impact mode**.
   - `iteration` and `nextReviewDate` do not change, regardless of **Got it** or **Again**.
+
+## Data Format
+
+Each word stores a single `category` (`string | null`). Exports produced by
+earlier versions carry a `tags: string[]` array instead: on import (and when
+reading local data) the first tag becomes the category and the others are
+dropped.

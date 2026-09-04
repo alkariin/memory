@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Trash2, List, Tag, Filter, Search, RotateCcw, Clock, Pencil, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { EASE, PREDEFINED_REVIEW_FILTER, ReviewFilterPayload, Word } from '@/shared/types';
+import { PREDEFINED_REVIEW_FILTER, ReviewFilterPayload, Word } from '@/shared/types';
 import { getIsoDate } from '@/shared/dates';
+import { loadStoredWords, saveWords } from '@/shared/words';
 
 interface GroupedWords {
   [date: string]: Word[];
@@ -20,79 +21,69 @@ const getTomorrowDate = () => {
   return getIsoDate(tomorrow);
 };
 
-const isPredefinedFilter = (tag: string | null): tag is PREDEFINED_REVIEW_FILTER => {
-  return tag === PREDEFINED_REVIEW_FILTER.TODAY || tag === PREDEFINED_REVIEW_FILTER.TOMORROW;
+const isPredefinedFilter = (category: string | null): category is PREDEFINED_REVIEW_FILTER => {
+  return category === PREDEFINED_REVIEW_FILTER.TODAY || category === PREDEFINED_REVIEW_FILTER.TOMORROW;
 };
 
-const getFilterLabel = (tag: string | null) => {
-  if (tag === PREDEFINED_REVIEW_FILTER.TODAY) return TODAY_FILTER_LABEL;
-  if (tag === PREDEFINED_REVIEW_FILTER.TOMORROW) return TOMORROW_FILTER_LABEL;
-  return tag;
+const getFilterLabel = (category: string | null) => {
+  if (category === PREDEFINED_REVIEW_FILTER.TODAY) return TODAY_FILTER_LABEL;
+  if (category === PREDEFINED_REVIEW_FILTER.TOMORROW) return TOMORROW_FILTER_LABEL;
+  return category;
 };
 
 export default function WordList() {
   const navigate = useNavigate();
   const [words, setWords] = useState<Word[]>([]);
   const [groupedWords, setGroupedWords] = useState<GroupedWords>({});
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [allTags, setAllTags] = useState<string[]>([]);
-  const [showTagFilters, setShowTagFilters] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [allCategories, setAllCategories] = useState<string[]>([]);
+  const [showCategoryFilters, setShowCategoryFilters] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const canStartReview = Boolean(selectedTag && words.length > 0);
+  const canStartReview = Boolean(selectedCategory && words.length > 0);
 
   useEffect(() => {
     loadWords();
-  }, [selectedTag, searchQuery]);
+  }, [selectedCategory, searchQuery]);
 
   const loadWords = () => {
-    const storedWords = JSON.parse(localStorage.getItem('words') || '[]');
-    // Migrate old words without the new fields
-    const migratedWords = storedWords.map((w: any) => ({
-      ...w,
-      reviewCount: w.reviewCount || 0,
-      lastReviewedDate: w.lastReviewedDate || null,
-      nextReviewDate: w.nextReviewDate || null,
-      tags: w.tags || [],
-      iteration: w.iteration || 0,
-      ease: w.ease || EASE.UNKNOWN,
-    }));
+    const storedWords = loadStoredWords();
 
     const snapshots = JSON.parse(localStorage.getItem(DAILY_REVIEW_SNAPSHOTS_KEY) || '{}');
     const today = getTodayDate();
 
     if (!snapshots[today]) {
-      snapshots[today] = migratedWords
-        .filter((w: Word) => !w.nextReviewDate || w.nextReviewDate <= today)
-        .map((w: Word) => w.id);
+      snapshots[today] = storedWords
+        .filter((w) => !w.nextReviewDate || w.nextReviewDate <= today)
+        .map((w) => w.id);
       localStorage.setItem(DAILY_REVIEW_SNAPSHOTS_KEY, JSON.stringify(snapshots));
     }
 
-    // Extract all unique tags
-    const tags = new Set<string>();
-    migratedWords.forEach((w: Word) => {
-      w.tags?.forEach((tag: string) => tags.add(tag));
+    // Extract all unique categories
+    const categories = new Set<string>();
+    storedWords.forEach((w) => {
+      if (w.category) categories.add(w.category);
     });
-    setAllTags(Array.from(tags).sort());
-    
-    // Filter by selected tag first
-    const tagFilteredWords = selectedTag
-      ? selectedTag === PREDEFINED_REVIEW_FILTER.TODAY
-        ? migratedWords.filter((w: Word) => snapshots[today]?.includes(w.id))
-        : selectedTag === PREDEFINED_REVIEW_FILTER.TOMORROW
-          ? migratedWords.filter((w: Word) => w.nextReviewDate === getTomorrowDate())
-          : migratedWords.filter((w: Word) => w.tags?.includes(selectedTag))
-      : migratedWords;
+    setAllCategories(Array.from(categories).sort());
+
+    // Filter by selected category first
+    const categoryFilteredWords = selectedCategory
+      ? selectedCategory === PREDEFINED_REVIEW_FILTER.TODAY
+        ? storedWords.filter((w) => snapshots[today]?.includes(w.id))
+        : selectedCategory === PREDEFINED_REVIEW_FILTER.TOMORROW
+          ? storedWords.filter((w) => w.nextReviewDate === getTomorrowDate())
+          : storedWords.filter((w) => w.category === selectedCategory)
+      : storedWords;
 
     // Then filter by search query on word or correlation
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const filteredWords = normalizedQuery
-      ? tagFilteredWords.filter((w: Word) =>
+      ? categoryFilteredWords.filter((w) =>
           w.word.toLowerCase().includes(normalizedQuery)
           || w.correlation.toLowerCase().includes(normalizedQuery)
         )
-      : tagFilteredWords;
-    
+      : categoryFilteredWords;
+
     setWords(filteredWords);
 
     // Group words by date
@@ -109,28 +100,26 @@ export default function WordList() {
 
   const deleteWord = (id: string) => {
     if (window.confirm('Are you sure you want to delete this word?')) {
-      const allWords = JSON.parse(localStorage.getItem('words') || '[]');
-      const updatedWords = allWords.filter((word: Word) => word.id !== id);
-      localStorage.setItem('words', JSON.stringify(updatedWords));
+      saveWords(loadStoredWords().filter((word) => word.id !== id));
       loadWords();
     }
   };
 
-  const startReviewWithTag = () => {
-    if (selectedTag) {
-      if (isPredefinedFilter(selectedTag)) {
+  const startReviewWithCategory = () => {
+    if (selectedCategory) {
+      if (isPredefinedFilter(selectedCategory)) {
         const payload: ReviewFilterPayload = {
           type: 'predefined',
-          tag: selectedTag,
-          label: selectedTag === PREDEFINED_REVIEW_FILTER.TODAY ? TODAY_FILTER_LABEL : TOMORROW_FILTER_LABEL,
+          filter: selectedCategory,
+          label: selectedCategory === PREDEFINED_REVIEW_FILTER.TODAY ? TODAY_FILTER_LABEL : TOMORROW_FILTER_LABEL,
           wordIds: words.map((word) => word.id),
           preserveSchedule: true,
         };
         localStorage.setItem('reviewFilter', JSON.stringify(payload));
       } else {
         const payload: ReviewFilterPayload = {
-          type: 'tag',
-          tag: selectedTag,
+          type: 'category',
+          category: selectedCategory,
           preserveSchedule: true,
         };
         localStorage.setItem('reviewFilter', JSON.stringify(payload));
@@ -139,14 +128,14 @@ export default function WordList() {
     }
   };
 
-  const toggleTagFilters = () => {
-    if (showTagFilters) {
-      setShowTagFilters(false);
-      setSelectedTag(null);
+  const toggleCategoryFilters = () => {
+    if (showCategoryFilters) {
+      setShowCategoryFilters(false);
+      setSelectedCategory(null);
       return;
     }
 
-    setShowTagFilters(true);
+    setShowCategoryFilters(true);
     setShowSearch(false);
     setSearchQuery('');
   };
@@ -159,8 +148,8 @@ export default function WordList() {
     }
 
     setShowSearch(true);
-    setShowTagFilters(false);
-    setSelectedTag(null);
+    setShowCategoryFilters(false);
+    setSelectedCategory(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -229,9 +218,9 @@ export default function WordList() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <button
-                onClick={toggleTagFilters}
+                onClick={toggleCategoryFilters}
                 className={`inline-flex items-center gap-1.5 px-6 py-3 rounded-lg text-sm transition-all ${
-                  showTagFilters
+                  showCategoryFilters
                     ? 'bg-orange-50 text-orange-700 border border-orange-200'
                     : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
                 }`}
@@ -252,7 +241,7 @@ export default function WordList() {
               </button>
             </div>
             <button
-              onClick={startReviewWithTag}
+              onClick={startReviewWithCategory}
               disabled={!canStartReview}
               tabIndex={canStartReview ? 0 : -1}
               aria-hidden={!canStartReview}
@@ -274,12 +263,12 @@ export default function WordList() {
               />
             </div>
           )}
-          {showTagFilters && (
+          {showCategoryFilters && (
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setSelectedTag(null)}
+              onClick={() => setSelectedCategory(null)}
               className={`px-3 py-1.5 rounded-lg text-sm ${
-                selectedTag === null
+                selectedCategory === null
                   ? 'bg-orange-600 text-white'
                   : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
               }`}
@@ -287,9 +276,9 @@ export default function WordList() {
               All
             </button>
             <button
-              onClick={() => setSelectedTag(selectedTag === PREDEFINED_REVIEW_FILTER.TODAY ? null : PREDEFINED_REVIEW_FILTER.TODAY)}
+              onClick={() => setSelectedCategory(selectedCategory === PREDEFINED_REVIEW_FILTER.TODAY ? null : PREDEFINED_REVIEW_FILTER.TODAY)}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${
-                selectedTag === PREDEFINED_REVIEW_FILTER.TODAY
+                selectedCategory === PREDEFINED_REVIEW_FILTER.TODAY
                   ? 'bg-orange-600 text-white'
                   : 'bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100'
               }`}
@@ -298,9 +287,9 @@ export default function WordList() {
               {TODAY_FILTER_LABEL}
             </button>
             <button
-              onClick={() => setSelectedTag(selectedTag === PREDEFINED_REVIEW_FILTER.TOMORROW ? null : PREDEFINED_REVIEW_FILTER.TOMORROW)}
+              onClick={() => setSelectedCategory(selectedCategory === PREDEFINED_REVIEW_FILTER.TOMORROW ? null : PREDEFINED_REVIEW_FILTER.TOMORROW)}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${
-                selectedTag === PREDEFINED_REVIEW_FILTER.TOMORROW
+                selectedCategory === PREDEFINED_REVIEW_FILTER.TOMORROW
                   ? 'bg-orange-600 text-white'
                   : 'bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100'
               }`}
@@ -308,18 +297,18 @@ export default function WordList() {
               <Tag className="w-3 h-3" />
               {TOMORROW_FILTER_LABEL}
             </button>
-            {allTags.map((tag) => (
+            {allCategories.map((category) => (
               <button
-                key={tag}
-                onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
+                key={category}
+                onClick={() => setSelectedCategory(category === selectedCategory ? null : category)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${
-                  selectedTag === tag
+                  selectedCategory === category
                     ? 'bg-orange-600 text-white'
                     : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
                 }`}
               >
                 <Tag className="w-3 h-3" />
-                {tag}
+                {category}
               </button>
             ))}
           </div>
@@ -334,12 +323,12 @@ export default function WordList() {
           <p className="text-gray-500 mb-1">
             {searchQuery
               ? `No words match "${searchQuery}"`
-              : selectedTag
-                ? `No words with the tag "${getFilterLabel(selectedTag)}"`
+              : selectedCategory
+                ? `No words in the category "${getFilterLabel(selectedCategory)}"`
                 : 'No words yet'}
           </p>
           <p className="text-sm text-gray-400">
-            {selectedTag ? 'Try another filter' : 'Add your first word'}
+            {selectedCategory ? 'Try another filter' : 'Add your first word'}
           </p>
         </div>
       ) : (
@@ -374,20 +363,13 @@ export default function WordList() {
                             </p>
                           )}
                           
-                          {/* Tags */}
-                          {word.tags && word.tags.length > 0 && (
+                          {/* Category */}
+                          {word.category && (
                             <div className="mb-3">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                {word.tags.map((tag) => (
-                                  <span
-                                    key={tag}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-600 rounded text-xs"
-                                  >
-                                    <Tag className="w-3 h-3" />
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-600 rounded text-xs">
+                                <Tag className="w-3 h-3" />
+                                {word.category}
+                              </span>
                             </div>
                           )}
                           

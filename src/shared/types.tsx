@@ -11,7 +11,7 @@ export interface Word {
   reviewCount: number;
   lastReviewedDate: string | null;
   nextReviewDate: string | null;
-  tags: string[];
+  category: string | null;
   iteration: number;
   ease: EASE;
 }
@@ -23,15 +23,14 @@ export enum PREDEFINED_REVIEW_FILTER {
 
 export type ReviewFilterPayload =
   | {
-      type: "tag";
-      tag: string;
+      type: "category";
+      category: string;
       preserveSchedule: true;
     }
   | {
       type: "predefined";
-      tag: PREDEFINED_REVIEW_FILTER;
+      filter: PREDEFINED_REVIEW_FILTER;
       label: string;
       wordIds: string[];
       preserveSchedule: true;
     };
-

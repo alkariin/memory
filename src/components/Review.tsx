@@ -14,7 +14,8 @@ import {
 import { useNavigate } from "react-router";
 import { EASE, ReviewFilterPayload, Word } from "@/shared/types";
 import { getIsoDate } from "@/shared/dates";
-import { groupWordsByTag, ReviewWord, TagGroup } from "@/shared/groupWordsByTag";
+import { CategoryGroup, groupWordsByCategory, ReviewWord } from "@/shared/groupWordsByCategory";
+import { loadStoredWords, saveWords } from "@/shared/words";
 import { shouldUseContinuousBars } from "@/shared/reviewProgress";
 
 const INTERVAL = [0, 1, 3, 7, 14, 30, 60, 120, 240];
@@ -23,14 +24,14 @@ const INTERVAL = [0, 1, 3, 7, 14, 30, 60, 120, 240];
 export default function Review() {
   const navigate = useNavigate();
   const [words, setWords] = useState<ReviewWord[]>([]);
-  const [tagGroups, setTagGroups] = useState<TagGroup[]>([]);
+  const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showWord, setShowWord] = useState(false);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [filterLabel, setFilterLabel] = useState<string | null>(null);
   const [isFilteredSession, setIsFilteredSession] = useState(false);
   const [preserveSchedule, setPreserveSchedule] = useState(false);
-  const [tagTransition, setTagTransition] = useState(false);
+  const [categoryTransition, setCategoryTransition] = useState(false);
 
   // Lookup maps so the progress row stays O(n) instead of scanning words per segment
   const wordById = useMemo(
@@ -42,8 +43,8 @@ export default function Review() {
     [words],
   );
   const useContinuousBars = useMemo(
-    () => shouldUseContinuousBars(tagGroups),
-    [tagGroups],
+    () => shouldUseContinuousBars(categoryGroups),
+    [categoryGroups],
   );
 
   useEffect(() => {
@@ -51,48 +52,33 @@ export default function Review() {
   }, []);
 
   const loadWords = () => {
-    const storedWords = JSON.parse(
-      localStorage.getItem("words") || "[]",
-    );
+    const storedWords = loadStoredWords();
 
     // Get today's date in ISO format (YYYY-MM-DD)
     const today = getIsoDate();
-    
+
     let rawWords: (Word & { reviewed: boolean })[] = [];
-    let tagFilter: string | null = null;
 
     // Check if there's an active filter
     const filterData = localStorage.getItem("reviewFilter");
     if (filterData) {
-      const filter = JSON.parse(filterData) as ReviewFilterPayload | { tag?: string };
+      const filter = JSON.parse(filterData) as ReviewFilterPayload;
 
-      if ("type" in filter && filter.type === "predefined") {
+      if (filter.type === "predefined") {
         setFilterLabel(filter.label);
         setIsFilteredSession(true);
         setPreserveSchedule(filter.preserveSchedule);
-        const filteredWords = storedWords.filter((w: Word) => filter.wordIds.includes(w.id));
         const orderedWords = filter.wordIds
-          .map((id) => filteredWords.find((w: Word) => w.id === id))
+          .map((id) => storedWords.find((w) => w.id === id))
           .filter((w): w is Word => Boolean(w));
-        rawWords = orderedWords.map((w: Word) => ({ ...w, reviewed: false }));
-      } else if ("type" in filter && filter.type === "tag") {
-        setFilterLabel(filter.tag);
+        rawWords = orderedWords.map((w) => ({ ...w, reviewed: false }));
+      } else {
+        setFilterLabel(filter.category);
         setIsFilteredSession(true);
         setPreserveSchedule(filter.preserveSchedule);
-        tagFilter = filter.tag;
-        const filteredWords = storedWords.filter((w: Word) => w.tags?.includes(filter.tag));
-        rawWords = filteredWords.map((w: Word) => ({ ...w, reviewed: false }));
-      } else {
-        // Backward compatibility for older payloads: { tag: string }
-        const legacyTag = filter.tag || null;
-        setFilterLabel(legacyTag);
-        setIsFilteredSession(Boolean(legacyTag));
-        setPreserveSchedule(Boolean(legacyTag));
-        tagFilter = legacyTag;
-        const filteredWords = legacyTag
-          ? storedWords.filter((w: Word) => w.tags?.includes(legacyTag))
-          : [];
-        rawWords = filteredWords.map((w: Word) => ({ ...w, reviewed: false }));
+        rawWords = storedWords
+          .filter((w) => w.category === filter.category)
+          .map((w) => ({ ...w, reviewed: false }));
       }
 
       localStorage.removeItem("reviewFilter"); // Clear filter after use
@@ -100,34 +86,33 @@ export default function Review() {
       setFilterLabel(null);
       setIsFilteredSession(false);
       setPreserveSchedule(false);
-      const wordsToReview = storedWords.filter((w: Word) => {
-        return !w.nextReviewDate || w.nextReviewDate <= today;
-      });
-      rawWords = wordsToReview.map((w: Word) => ({ ...w, reviewed: false }));
+      rawWords = storedWords
+        .filter((w) => !w.nextReviewDate || w.nextReviewDate <= today)
+        .map((w) => ({ ...w, reviewed: false }));
     }
 
-    // Group by tag
-    const { grouped, tagGroups: groups } = groupWordsByTag(rawWords, tagFilter);
+    // Group by category
+    const { grouped, categoryGroups: groups } = groupWordsByCategory(rawWords);
     setWords(grouped);
-    setTagGroups(groups);
+    setCategoryGroups(groups);
   };
 
   const handleFlip = () => {
     setShowWord(!showWord);
   };
 
-  // Find the next unreviewed word, preferring within current tag group
+  // Find the next unreviewed word, preferring within current category group
   const findNextUnreviewed = useCallback((updatedWords: ReviewWord[], fromIndex: number): number => {
-    // First try to find next unreviewed in same tag group
-    const currentTag = updatedWords[fromIndex]?.assignedTag;
-    if (currentTag) {
+    // First try to find next unreviewed in same category group
+    const currentCategory = updatedWords[fromIndex]?.assignedCategory;
+    if (currentCategory) {
       for (let i = fromIndex + 1; i < updatedWords.length; i++) {
-        if (!updatedWords[i].reviewed && updatedWords[i].assignedTag === currentTag) {
+        if (!updatedWords[i].reviewed && updatedWords[i].assignedCategory === currentCategory) {
           return i;
         }
       }
     }
-    // Then find any next unreviewed (next tag group)
+    // Then find any next unreviewed (next category group)
     for (let i = fromIndex + 1; i < updatedWords.length; i++) {
       if (!updatedWords[i].reviewed) return i;
     }
@@ -176,10 +161,7 @@ export default function Review() {
       ? currentWord.nextReviewDate
       : getIsoDate(nextDate);
 
-    const allWords = JSON.parse(
-      localStorage.getItem("words") || "[]",
-    );
-    const updatedAllWords = allWords.map((w: Word) => {
+    const updatedAllWords = loadStoredWords().map((w) => {
       if (w.id === currentWord.id) {
         return {
           ...w,
@@ -193,10 +175,7 @@ export default function Review() {
       return w;
     });
 
-    localStorage.setItem(
-      "words",
-      JSON.stringify(updatedAllWords),
-    );
+    saveWords(updatedAllWords);
 
     // Update local state
     const updatedWords = [...words];
@@ -215,13 +194,13 @@ export default function Review() {
     } else {
       // Find next unreviewed word
       const nextIndex = findNextUnreviewed(updatedWords, currentIndex);
-      const currentTag = updatedWords[currentIndex].assignedTag;
-      const nextTag = updatedWords[nextIndex].assignedTag;
+      const currentCategory = updatedWords[currentIndex].assignedCategory;
+      const nextCategory = updatedWords[nextIndex].assignedCategory;
 
-      // Show tag transition animation if changing groups
-      if (currentTag !== nextTag) {
-        setTagTransition(true);
-        setTimeout(() => setTagTransition(false), 1500);
+      // Show category transition animation if changing groups
+      if (currentCategory !== nextCategory) {
+        setCategoryTransition(true);
+        setTimeout(() => setCategoryTransition(false), 1500);
       }
 
       setShowWord(false);
@@ -248,7 +227,7 @@ export default function Review() {
           </h2>
           <p className="text-gray-500 text-sm mb-1">
             {filterLabel
-              ? `No words with the tag "${filterLabel}"`
+              ? `No words in the category "${filterLabel}"`
               : "No words to review"}
           </p>
           <p className="text-sm text-gray-400">
@@ -339,18 +318,13 @@ export default function Review() {
               </div>
             )}
 
-            {/* Tags */}
-            {currentWord.tags && currentWord.tags.length > 0 && (
-              <div className={`flex flex-wrap justify-center gap-1.5 mt-4 ${tagTransition ? "animate-tag-pulse" : ""}`}>
-                {currentWord.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-600 rounded text-xs"
-                  >
-                    <Tag className="w-3 h-3" />
-                    {tag}
-                  </span>
-                ))}
+            {/* Category */}
+            {currentWord.category && (
+              <div className={`flex justify-center mt-4 ${categoryTransition ? "animate-category-pulse" : ""}`}>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-600 rounded text-xs">
+                  <Tag className="w-3 h-3" />
+                  {currentWord.category}
+                </span>
               </div>
             )}
           </div>
@@ -373,24 +347,24 @@ export default function Review() {
         </div>
       </div>
 
-      {/* Progress - grouped by tag */}
+      {/* Progress - grouped by category */}
       <div className="mb-6">
         <div className="flex gap-2">
-          {tagGroups.map((group) => {
+          {categoryGroups.map((group) => {
             const reviewedCount = group.wordIds.reduce(
               (count, id) => (wordById.get(id)?.reviewed ? count + 1 : count),
               0,
             );
-            const isActiveGroup = currentWord.assignedTag === group.tag;
+            const isActiveGroup = currentWord.assignedCategory === group.category;
             return (
-              <div key={group.tag} className="flex-1 min-w-0 flex flex-col gap-1">
-                {tagGroups.length > 1 && (
+              <div key={group.category} className="flex-1 min-w-0 flex flex-col gap-1">
+                {categoryGroups.length > 1 && (
                   <span
                     className={`text-[10px] truncate text-center ${
                       isActiveGroup ? "text-orange-600" : "text-gray-400"
                     }`}
                   >
-                    {group.tag}
+                    {group.category}
                   </span>
                 )}
                 {useContinuousBars ? (

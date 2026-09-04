@@ -1,8 +1,8 @@
 import { Outlet, Link, useLocation } from 'react-router';
 import { List, Plus, BookOpen, Settings, X, Download, Upload } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import { Word } from '@/shared/types';
 import { getIsoDate } from '@/shared/dates';
+import { loadStoredWords, migrateWords, saveWords } from '@/shared/words';
 
 const DAILY_REVIEW_SNAPSHOTS_KEY = 'dailyReviewSnapshots';
 
@@ -10,8 +10,7 @@ function ensureDailySnapshot() {
   const today = getIsoDate();
   const snapshots = JSON.parse(localStorage.getItem(DAILY_REVIEW_SNAPSHOTS_KEY) || '{}');
   if (!snapshots[today]) {
-    const storedWords: Word[] = JSON.parse(localStorage.getItem('words') || '[]');
-    snapshots[today] = storedWords
+    snapshots[today] = loadStoredWords()
       .filter((w) => !w.nextReviewDate || w.nextReviewDate <= today)
       .map((w) => w.id);
     localStorage.setItem(DAILY_REVIEW_SNAPSHOTS_KEY, JSON.stringify(snapshots));
@@ -33,8 +32,7 @@ export default function Layout() {
   };
 
   const handleExportData = () => {
-    const words = JSON.parse(localStorage.getItem('words') || '[]');
-    const dataStr = JSON.stringify(words, null, 2);
+    const dataStr = JSON.stringify(loadStoredWords(), null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
@@ -55,7 +53,8 @@ export default function Layout() {
       try {
         const importedWords = JSON.parse(e.target?.result as string);
         if (Array.isArray(importedWords)) {
-          localStorage.setItem('words', JSON.stringify(importedWords));
+          // Older exports store a `tags` array: migrate them to a single category
+          saveWords(migrateWords(importedWords));
           alert('Data successfully imported!');
           window.location.reload();
         } else {

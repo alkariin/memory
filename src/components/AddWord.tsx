@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, type KeyboardEvent, type FocusEvent, type MouseEvent } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Check, X, Tag } from 'lucide-react';
 import { EASE, Word } from '@/shared/types';
 import { getIsoDate } from '@/shared/dates';
+import { loadStoredWords, saveWords } from '@/shared/words';
 
 export default function AddWord() {
   const { id } = useParams<{ id: string }>();
@@ -11,33 +12,31 @@ export default function AddWord() {
 
   const [word, setWord] = useState('');
   const [correlation, setCorrelation] = useState('');
-  const [tagInput, setTagInput] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
+  const [category, setCategory] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [editingWord, setEditingWord] = useState<Word | null>(null);
-  const [allTags, setAllTags] = useState<string[]>([]);
+  const [allCategories, setAllCategories] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const blurTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load all existing tags from localStorage
+  // Load all existing categories from localStorage
   useEffect(() => {
-    const storedWords: Word[] = JSON.parse(localStorage.getItem('words') || '[]');
-    const tagSet = new Set<string>();
-    storedWords.forEach((w) => w.tags?.forEach((t) => tagSet.add(t)));
-    setAllTags(Array.from(tagSet).sort());
+    const categorySet = new Set<string>();
+    loadStoredWords().forEach((w) => {
+      if (w.category) categorySet.add(w.category);
+    });
+    setAllCategories(Array.from(categorySet).sort());
   }, []);
 
   // Load existing word when editing
   useEffect(() => {
-    // ...existing code...
     if (id) {
-      const storedWords: Word[] = JSON.parse(localStorage.getItem('words') || '[]');
-      const found = storedWords.find((w) => w.id === id);
+      const found = loadStoredWords().find((w) => w.id === id);
       if (found) {
         setEditingWord(found);
         setWord(found.word);
         setCorrelation(found.correlation || '');
-        setTags(found.tags || []);
+        setCategory(found.category || '');
       } else {
         navigate('/list');
       }
@@ -45,79 +44,50 @@ export default function AddWord() {
       setEditingWord(null);
       setWord('');
       setCorrelation('');
-      setTags([]);
-      setTagInput('');
+      setCategory('');
     }
   }, [id, navigate]);
 
-  const filteredSuggestions = allTags.filter(
-    (t) =>
-      tagInput.trim().length > 0 &&
-      t.toLowerCase().includes(tagInput.trim().toLowerCase()) &&
-      !tags.includes(t)
+  const filteredSuggestions = allCategories.filter(
+    (c) =>
+      c.toLowerCase().includes(category.trim().toLowerCase()) &&
+      c.toLowerCase() !== category.trim().toLowerCase()
   );
 
-  const selectSuggestion = (tag: string) => {
-    if (!tags.includes(tag)) {
-      setTags([...tags, tag]);
-    }
-    setTagInput('');
+  const selectSuggestion = (suggestion: string) => {
+    setCategory(suggestion);
     setShowSuggestions(false);
   };
 
-  const handleAddTag = (e?: KeyboardEvent | FocusEvent | MouseEvent) => {
-    if (e) {
-      if (e.type === 'keydown' && (e as KeyboardEvent).key !== 'Enter') {
-        return;
-      }
-      if (e.type === 'keydown' || e.type === 'click') {
-        e.preventDefault();
-      }
-    }
-
-    if (tagInput.trim()) {
-      if (!tags.includes(tagInput.trim())) {
-        setTags([...tags, tagInput.trim()]);
-      }
-      setTagInput('');
-    }
-    setShowSuggestions(false);
-  };
-
-  const handleTagBlur = () => {
+  const handleCategoryBlur = () => {
     // Delay to allow click on suggestion to fire first
-    blurTimeout.current = setTimeout(() => {
-      handleAddTag();
-      setShowSuggestions(false);
-    }, 150);
+    blurTimeout.current = setTimeout(() => setShowSuggestions(false), 150);
   };
 
-  const handleTagFocus = () => {
+  const handleCategoryFocus = () => {
     if (blurTimeout.current) {
       clearTimeout(blurTimeout.current);
     }
     setShowSuggestions(true);
   };
 
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!word.trim()) return;
 
-    const existingWords: Word[] = JSON.parse(localStorage.getItem('words') || '[]');
+    const existingWords = loadStoredWords();
+    const trimmedCategory = category.trim() || null;
 
     if (isEditing && editingWord) {
       // Update existing word
-      const updatedWords = existingWords.map((w) =>
-        w.id === editingWord.id
-          ? { ...w, word: word.trim(), correlation: correlation.trim(), tags }
-          : w
+      saveWords(
+        existingWords.map((w) =>
+          w.id === editingWord.id
+            ? { ...w, word: word.trim(), correlation: correlation.trim(), category: trimmedCategory }
+            : w
+        )
       );
-      localStorage.setItem('words', JSON.stringify(updatedWords));
 
       setShowSuccess(true);
       setTimeout(() => {
@@ -133,21 +103,23 @@ export default function AddWord() {
         date: getIsoDate(),
         reviewCount: 0,
         lastReviewedDate: null,
-        tags: tags,
+        category: trimmedCategory,
         iteration: 0,
         ease: EASE.UNKNOWN,
         nextReviewDate: (() => { const d = new Date(); d.setDate(d.getDate() + 1); return getIsoDate(d); })(),
       };
 
-      const updatedWords = [newWord, ...existingWords];
-      localStorage.setItem('words', JSON.stringify(updatedWords));
+      saveWords([newWord, ...existingWords]);
+
+      if (trimmedCategory && !allCategories.includes(trimmedCategory)) {
+        setAllCategories([...allCategories, trimmedCategory].sort());
+      }
 
       // Reset the form
       setWord('');
       setCorrelation('');
-      setTags([]);
-      setTagInput('');
-      
+      setCategory('');
+
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
     }
@@ -190,25 +162,40 @@ export default function AddWord() {
         </div>
 
         <div>
-          <label htmlFor="tags" className="block text-sm text-gray-600 mb-2">
-            Tags
+          <label htmlFor="category" className="block text-sm text-gray-600 mb-2">
+            Category
           </label>
           <div className="relative">
             <input
               type="text"
-              id="tags"
-              value={tagInput}
+              id="category"
+              value={category}
               onChange={(e) => {
-                setTagInput(e.target.value);
+                setCategory(e.target.value);
                 setShowSuggestions(true);
               }}
-              onKeyDown={handleAddTag}
-              onBlur={handleTagBlur}
-              onFocus={handleTagFocus}
-              placeholder="Type a tag and press Enter..."
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  setShowSuggestions(false);
+                }
+              }}
+              onBlur={handleCategoryBlur}
+              onFocus={handleCategoryFocus}
+              placeholder="Choose or type a category..."
+              className="w-full px-4 py-3 pr-10 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm"
               autoComplete="off"
             />
+            {category && (
+              <button
+                type="button"
+                onClick={() => setCategory('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                aria-label="Clear category"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
             {showSuggestions && filteredSuggestions.length > 0 && (
               <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg overflow-hidden z-50 max-h-32 overflow-auto">
                 {filteredSuggestions.map((suggestion) => (
@@ -228,26 +215,6 @@ export default function AddWord() {
               </div>
             )}
           </div>
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-50 text-orange-700 rounded-lg text-sm border border-orange-200"
-                >
-                  <Tag className="w-3 h-3" />
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={() => removeTag(tag)}
-                    className="hover:text-orange-900"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="flex gap-3 pt-1">

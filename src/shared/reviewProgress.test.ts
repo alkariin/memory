@@ -4,12 +4,12 @@ import {
   maxSegmentsPerGroup,
   shouldUseContinuousBars,
 } from "./reviewProgress";
-import { TagGroup } from "./groupWordsByTag";
+import { CategoryGroup } from "./groupWordsByCategory";
 
-function makeGroup(tag: string, wordCount: number): TagGroup {
+function makeGroup(category: string, wordCount: number): CategoryGroup {
   return {
-    tag,
-    wordIds: Array.from({ length: wordCount }, (_, i) => `${tag}-${i}`),
+    category,
+    wordIds: Array.from({ length: wordCount }, (_, i) => `${category}-${i}`),
   };
 }
 
