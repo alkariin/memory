@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Check,
   X,
@@ -15,6 +15,7 @@ import { useNavigate } from "react-router";
 import { EASE, ReviewFilterPayload, Word } from "@/shared/types";
 import { getIsoDate } from "@/shared/dates";
 import { groupWordsByTag, ReviewWord, TagGroup } from "@/shared/groupWordsByTag";
+import { shouldUseContinuousBars } from "@/shared/reviewProgress";
 
 const INTERVAL = [0, 1, 3, 7, 14, 30, 60, 120, 240];
 
@@ -30,6 +31,20 @@ export default function Review() {
   const [isFilteredSession, setIsFilteredSession] = useState(false);
   const [preserveSchedule, setPreserveSchedule] = useState(false);
   const [tagTransition, setTagTransition] = useState(false);
+
+  // Lookup maps so the progress row stays O(n) instead of scanning words per segment
+  const wordById = useMemo(
+    () => new Map(words.map((w) => [w.id, w])),
+    [words],
+  );
+  const indexById = useMemo(
+    () => new Map(words.map((w, i) => [w.id, i])),
+    [words],
+  );
+  const useContinuousBars = useMemo(
+    () => shouldUseContinuousBars(tagGroups),
+    [tagGroups],
+  );
 
   useEffect(() => {
     loadWords();
@@ -358,36 +373,62 @@ export default function Review() {
         </div>
       </div>
 
-      {/* Progress Bar - grouped by tag */}
+      {/* Progress - grouped by tag */}
       <div className="mb-6">
         <div className="flex gap-2">
-          {tagGroups.map((group) => (
-            <div key={group.tag} className="flex-1 flex flex-col gap-1">
-              {tagGroups.length > 1 && (
-                <span className="text-[10px] text-gray-400 truncate text-center">
-                  {group.tag}
-                </span>
-              )}
-              <div className="flex gap-0.5">
-                {group.wordIds.map((id) => {
-                  const wordIdx = words.findIndex((w) => w.id === id);
-                  const word = words[wordIdx];
-                  return (
-                    <div
-                      key={id}
-                      className={`h-1.5 flex-1 rounded-full transition-all ${
-                        word?.reviewed
-                          ? "bg-orange-600"
-                          : wordIdx === currentIndex
-                            ? "bg-orange-500"
-                            : "bg-gray-200"
-                      }`}
-                    />
-                  );
-                })}
+          {tagGroups.map((group) => {
+            const reviewedCount = group.wordIds.reduce(
+              (count, id) => (wordById.get(id)?.reviewed ? count + 1 : count),
+              0,
+            );
+            const isActiveGroup = currentWord.assignedTag === group.tag;
+            return (
+              <div key={group.tag} className="flex-1 min-w-0 flex flex-col gap-1">
+                {tagGroups.length > 1 && (
+                  <span
+                    className={`text-[10px] truncate text-center ${
+                      isActiveGroup ? "text-orange-600" : "text-gray-400"
+                    }`}
+                  >
+                    {group.tag}
+                  </span>
+                )}
+                {useContinuousBars ? (
+                  <>
+                    <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                      <div
+                        className="h-full bg-orange-600 rounded-full transition-all"
+                        style={{
+                          width: `${(reviewedCount / group.wordIds.length) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-400 text-center tabular-nums">
+                      {reviewedCount}/{group.wordIds.length}
+                    </span>
+                  </>
+                ) : (
+                  <div className="flex gap-0.5 min-w-0 overflow-hidden">
+                    {group.wordIds.map((id) => {
+                      const word = wordById.get(id);
+                      return (
+                        <div
+                          key={id}
+                          className={`h-1.5 flex-1 rounded-full transition-all ${
+                            word?.reviewed
+                              ? "bg-orange-600"
+                              : indexById.get(id) === currentIndex
+                                ? "bg-orange-500"
+                                : "bg-gray-200"
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
