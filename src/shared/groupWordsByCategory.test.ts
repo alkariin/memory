@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { groupWordsByCategory, UNCATEGORIZED } from "./groupWordsByCategory";
+import {
+  groupWordsAsSingleGroup,
+  groupWordsByCategory,
+  MIXED,
+  UNCATEGORIZED,
+} from "./groupWordsByCategory";
 import { EASE, Word } from "./types";
 
 function makeWord(id: string, category: string | null): Word & { reviewed: boolean } {
@@ -83,6 +88,34 @@ describe("groupWordsByCategory", () => {
 
   it("handles an empty session", () => {
     const { grouped, categoryGroups } = groupWordsByCategory([]);
+
+    expect(grouped).toEqual([]);
+    expect(categoryGroups).toEqual([]);
+  });
+});
+
+describe("groupWordsAsSingleGroup", () => {
+  it("puts every word in one group whatever its category", () => {
+    const words = [makeWord("w1", "A"), makeWord("w2", "B"), makeWord("w3", null)];
+
+    const { grouped, categoryGroups } = groupWordsAsSingleGroup(words);
+
+    expect(categoryGroups).toHaveLength(1);
+    expect(categoryGroups[0].category).toBe(MIXED);
+    expect(categoryGroups[0].wordIds).toEqual(["w1", "w2", "w3"]);
+    expect(grouped.map((w) => w.assignedCategory)).toEqual([MIXED, MIXED, MIXED]);
+  });
+
+  it("keeps the order it was given, so a drawn session stays stable", () => {
+    const words = [makeWord("w3", "B"), makeWord("w1", null), makeWord("w2", "A")];
+
+    const { grouped } = groupWordsAsSingleGroup(words);
+
+    expect(grouped.map((w) => w.id)).toEqual(["w3", "w1", "w2"]);
+  });
+
+  it("handles an empty session", () => {
+    const { grouped, categoryGroups } = groupWordsAsSingleGroup([]);
 
     expect(grouped).toEqual([]);
     expect(categoryGroups).toEqual([]);

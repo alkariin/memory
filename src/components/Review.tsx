@@ -10,13 +10,22 @@ import {
   CheckCircle2,
   PartyPopper,
   Tag,
+  Shuffle,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { EASE, ReviewFilterPayload, Word } from "@/shared/types";
 import { getIsoDate } from "@/shared/dates";
-import { CategoryGroup, groupWordsByCategory, ReviewWord } from "@/shared/groupWordsByCategory";
+import {
+  CategoryGroup,
+  groupWordsAsSingleGroup,
+  groupWordsByCategory,
+  ReviewWord,
+} from "@/shared/groupWordsByCategory";
 import { loadStoredWords, saveWords } from "@/shared/words";
 import { shouldUseContinuousBars } from "@/shared/reviewProgress";
+import { dueWordsFor } from "@/shared/dailySnapshot";
+import { loadSettings } from "@/shared/settings";
+import { ensureDailyDraw } from "@/shared/dailySelection";
 
 const INTERVAL = [0, 1, 3, 7, 14, 30, 60, 120, 240];
 
@@ -31,6 +40,8 @@ export default function Review() {
   const [filterLabel, setFilterLabel] = useState<string | null>(null);
   const [isFilteredSession, setIsFilteredSession] = useState(false);
   const [preserveSchedule, setPreserveSchedule] = useState(false);
+  const [dailyLimit, setDailyLimit] = useState<number | null>(null);
+  const [dailyLimitReached, setDailyLimitReached] = useState(false);
   const [categoryTransition, setCategoryTransition] = useState(false);
 
   // Lookup maps so the progress row stays O(n) instead of scanning words per segment
@@ -58,11 +69,16 @@ export default function Review() {
     const today = getIsoDate();
 
     let rawWords: (Word & { reviewed: boolean })[] = [];
+    // A limited session mixes categories, so it is grouped as one block
+    let isDrawnSession = false;
 
     // Check if there's an active filter
     const filterData = localStorage.getItem("reviewFilter");
     if (filterData) {
       const filter = JSON.parse(filterData) as ReviewFilterPayload;
+
+      setDailyLimit(null);
+      setDailyLimitReached(false);
 
       if (filter.type === "predefined") {
         setFilterLabel(filter.label);
@@ -86,13 +102,27 @@ export default function Review() {
       setFilterLabel(null);
       setIsFilteredSession(false);
       setPreserveSchedule(false);
-      rawWords = storedWords
-        .filter((w) => !w.nextReviewDate || w.nextReviewDate <= today)
-        .map((w) => ({ ...w, reviewed: false }));
+      const dueWords = dueWordsFor(storedWords, today);
+
+      const { dailyLimitEnabled, dailyWordLimit } = loadSettings();
+      if (dailyLimitEnabled) {
+        setDailyLimit(dailyWordLimit);
+        isDrawnSession = true;
+        const { words: drawn } = ensureDailyDraw(dueWords, dailyWordLimit, today);
+        rawWords = drawn.map((w) => ({ ...w, reviewed: false }));
+        // Today's draw is done while words remain due: they wait for tomorrow
+        setDailyLimitReached(drawn.length === 0 && dueWords.length > 0);
+      } else {
+        setDailyLimit(null);
+        setDailyLimitReached(false);
+        rawWords = dueWords.map((w) => ({ ...w, reviewed: false }));
+      }
     }
 
-    // Group by category
-    const { grouped, categoryGroups: groups } = groupWordsByCategory(rawWords);
+    // Group by category, unless the words were drawn across all categories
+    const { grouped, categoryGroups: groups } = isDrawnSession
+      ? groupWordsAsSingleGroup(rawWords)
+      : groupWordsByCategory(rawWords);
     setWords(grouped);
     setCategoryGroups(groups);
   };
@@ -228,10 +258,14 @@ export default function Review() {
           <p className="text-gray-500 text-sm mb-1">
             {filterLabel
               ? `No words in the category "${filterLabel}"`
-              : "No words to review"}
+              : dailyLimitReached
+                ? `You are done for today (${dailyLimit} words)`
+                : "No words to review"}
           </p>
           <p className="text-sm text-gray-400">
-            Add words to get started
+            {dailyLimitReached
+              ? "The remaining words wait for tomorrow"
+              : "Add words to get started"}
           </p>
         </div>
       </div>
@@ -263,6 +297,14 @@ export default function Review() {
                 No-impact mode
               </span>
             )}
+          </div>
+        )}
+        {dailyLimit !== null && (
+          <div className="flex items-center gap-2 mt-2 mb-3">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs border border-gray-200">
+              <Shuffle className="w-3 h-3" />
+              {dailyLimit} words a day
+            </span>
           </div>
         )}
         {preserveSchedule && (

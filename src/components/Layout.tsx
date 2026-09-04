@@ -3,23 +3,19 @@ import { List, Plus, BookOpen, Settings, X, Download, Upload } from 'lucide-reac
 import { useState, useRef, useEffect } from 'react';
 import { getIsoDate } from '@/shared/dates';
 import { loadStoredWords, migrateWords, saveWords } from '@/shared/words';
-
-const DAILY_REVIEW_SNAPSHOTS_KEY = 'dailyReviewSnapshots';
-
-function ensureDailySnapshot() {
-  const today = getIsoDate();
-  const snapshots = JSON.parse(localStorage.getItem(DAILY_REVIEW_SNAPSHOTS_KEY) || '{}');
-  if (!snapshots[today]) {
-    snapshots[today] = loadStoredWords()
-      .filter((w) => !w.nextReviewDate || w.nextReviewDate <= today)
-      .map((w) => w.id);
-    localStorage.setItem(DAILY_REVIEW_SNAPSHOTS_KEY, JSON.stringify(snapshots));
-  }
-}
+import { ensureDailySnapshot } from '@/shared/dailySnapshot';
+import {
+  DEFAULT_DAILY_WORD_LIMIT,
+  loadSettings,
+  saveSettings,
+  Settings as AppSettings,
+} from '@/shared/settings';
+import { clearDailySelection } from '@/shared/dailySelection';
 
 export default function Layout() {
   const location = useLocation();
   const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -69,6 +65,20 @@ export default function Layout() {
 
   const triggerImport = () => {
     fileInputRef.current?.click();
+  };
+
+  // Changing the limit drops today's draw so the new setting applies right away
+  const updateSettings = (changes: Partial<AppSettings>) => {
+    const next = { ...settings, ...changes };
+    setSettings(next);
+    saveSettings(next);
+    clearDailySelection();
+  };
+
+  const handleDailyLimitChange = (value: string) => {
+    const limit = Number.parseInt(value, 10);
+    if (!Number.isFinite(limit) || limit < 1) return;
+    updateSettings({ dailyWordLimit: limit });
   };
 
 
@@ -122,6 +132,33 @@ export default function Layout() {
                 onChange={handleImportData}
                 style={{ display: 'none' }}
               />
+
+              <div className="pt-3 border-t border-gray-200 space-y-2">
+                <label className="flex items-center justify-between gap-2 text-sm text-gray-700 cursor-pointer">
+                  <span>Daily limit</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.dailyLimitEnabled}
+                    onChange={(e) => updateSettings({ dailyLimitEnabled: e.target.checked })}
+                    className="w-4 h-4 accent-orange-600"
+                  />
+                </label>
+                <p className="text-xs text-gray-400">
+                  Review a fixed number of words a day, drawn at random across all categories.
+                </p>
+                {settings.dailyLimitEnabled && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      defaultValue={settings.dailyWordLimit || DEFAULT_DAILY_WORD_LIMIT}
+                      onChange={(e) => handleDailyLimitChange(e.target.value)}
+                      className="w-16 px-2 py-1 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                    <span className="text-xs text-gray-500">words / day</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -129,7 +166,8 @@ export default function Layout() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto pb-20">
-        <Outlet />
+        {/* Keyed so the current page picks up a changed daily limit immediately */}
+        <Outlet key={`${settings.dailyLimitEnabled}-${settings.dailyWordLimit}`} />
       </main>
 
       {/* Bottom Navigation */}

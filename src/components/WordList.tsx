@@ -4,12 +4,12 @@ import { useNavigate } from 'react-router';
 import { PREDEFINED_REVIEW_FILTER, ReviewFilterPayload, Word } from '@/shared/types';
 import { getIsoDate } from '@/shared/dates';
 import { loadStoredWords, saveWords } from '@/shared/words';
+import { ensureDailySnapshot } from '@/shared/dailySnapshot';
 
 interface GroupedWords {
   [date: string]: Word[];
 }
 
-const DAILY_REVIEW_SNAPSHOTS_KEY = 'dailyReviewSnapshots';
 const TODAY_FILTER_LABEL = "Today";
 const TOMORROW_FILTER_LABEL = 'Tomorrow';
 
@@ -49,15 +49,9 @@ export default function WordList() {
   const loadWords = () => {
     const storedWords = loadStoredWords();
 
-    const snapshots = JSON.parse(localStorage.getItem(DAILY_REVIEW_SNAPSHOTS_KEY) || '{}');
-    const today = getTodayDate();
-
-    if (!snapshots[today]) {
-      snapshots[today] = storedWords
-        .filter((w) => !w.nextReviewDate || w.nextReviewDate <= today)
-        .map((w) => w.id);
-      localStorage.setItem(DAILY_REVIEW_SNAPSHOTS_KEY, JSON.stringify(snapshots));
-    }
+    // The words today's review started from: with the daily limit on, the
+    // day's random draw rather than everything that was due
+    const todayWordIds = new Set(ensureDailySnapshot(getTodayDate()));
 
     // Extract all unique categories
     const categories = new Set<string>();
@@ -69,7 +63,7 @@ export default function WordList() {
     // Filter by selected category first
     const categoryFilteredWords = selectedCategory
       ? selectedCategory === PREDEFINED_REVIEW_FILTER.TODAY
-        ? storedWords.filter((w) => snapshots[today]?.includes(w.id))
+        ? storedWords.filter((w) => todayWordIds.has(w.id))
         : selectedCategory === PREDEFINED_REVIEW_FILTER.TOMORROW
           ? storedWords.filter((w) => w.nextReviewDate === getTomorrowDate())
           : storedWords.filter((w) => w.category === selectedCategory)
