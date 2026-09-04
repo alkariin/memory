@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type KeyboardEvent, type FocusEvent, type 
 import { useParams, useNavigate } from 'react-router';
 import { Check, X, Tag } from 'lucide-react';
 import { EASE, Word } from '@/shared/types';
+import { getIsoDate } from '@/shared/dates';
 
 export default function AddWord() {
   const { id } = useParams<{ id: string }>();
@@ -129,13 +130,13 @@ export default function AddWord() {
         id: Date.now().toString(),
         word: word.trim(),
         correlation: correlation.trim(),
-        date: new Date().toISOString().split('T')[0],
+        date: getIsoDate(),
         reviewCount: 0,
         lastReviewedDate: null,
         tags: tags,
         iteration: 0,
         ease: EASE.UNKNOWN,
-        nextReviewDate: (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })(),
+        nextReviewDate: (() => { const d = new Date(); d.setDate(d.getDate() + 1); return getIsoDate(d); })(),
       };
 
       const updatedWords = [newWord, ...existingWords];

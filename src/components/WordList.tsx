@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Trash2, List, Tag, Filter, Search, RotateCcw, Clock, Pencil, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { EASE, PREDEFINED_REVIEW_FILTER, ReviewFilterPayload, Word } from '@/shared/types';
+import { getIsoDate } from '@/shared/dates';
 
 interface GroupedWords {
   [date: string]: Word[];
@@ -11,9 +12,7 @@ const DAILY_REVIEW_SNAPSHOTS_KEY = 'dailyReviewSnapshots';
 const TODAY_FILTER_LABEL = "Today";
 const TOMORROW_FILTER_LABEL = 'Tomorrow';
 
-const getIsoDate = (date: Date) => date.toISOString().split('T')[0];
-
-const getTodayDate = () => getIsoDate(new Date());
+const getTodayDate = () => getIsoDate();
 
 const getTomorrowDate = () => {
   const tomorrow = new Date();

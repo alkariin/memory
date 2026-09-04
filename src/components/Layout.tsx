@@ -2,11 +2,12 @@ import { Outlet, Link, useLocation } from 'react-router';
 import { List, Plus, BookOpen, Settings, X, Download, Upload } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { Word } from '@/shared/types';
+import { getIsoDate } from '@/shared/dates';
 
 const DAILY_REVIEW_SNAPSHOTS_KEY = 'dailyReviewSnapshots';
 
 function ensureDailySnapshot() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getIsoDate();
   const snapshots = JSON.parse(localStorage.getItem(DAILY_REVIEW_SNAPSHOTS_KEY) || '{}');
   if (!snapshots[today]) {
     const storedWords: Word[] = JSON.parse(localStorage.getItem('words') || '[]');
@@ -38,7 +39,7 @@ export default function Layout() {
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `vocabulary-export-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `vocabulary-export-${getIsoDate()}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

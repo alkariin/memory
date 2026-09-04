@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { EASE, ReviewFilterPayload, Word } from "@/shared/types";
+import { getIsoDate } from "@/shared/dates";
 import { groupWordsByTag, ReviewWord, TagGroup } from "@/shared/groupWordsByTag";
 
 const INTERVAL = [0, 1, 3, 7, 14, 30, 60, 120, 240];
@@ -40,7 +41,7 @@ export default function Review() {
     );
 
     // Get today's date in ISO format (YYYY-MM-DD)
-    const today = new Date().toISOString().split("T")[0];
+    const today = getIsoDate();
     
     let rawWords: (Word & { reviewed: boolean })[] = [];
     let tagFilter: string | null = null;
@@ -158,7 +159,7 @@ export default function Review() {
     nextDate.setDate(nextDate.getDate() + nextInterval);
     const nextReviewDate = preserveSchedule
       ? currentWord.nextReviewDate
-      : nextDate.toISOString().split("T")[0];
+      : getIsoDate(nextDate);
 
     const allWords = JSON.parse(
       localStorage.getItem("words") || "[]",
@@ -168,9 +169,7 @@ export default function Review() {
         return {
           ...w,
           reviewCount: (w.reviewCount || 0) + 1,
-          lastReviewedDate: new Date()
-            .toISOString()
-            .split("T")[0],
+          lastReviewedDate: getIsoDate(),
           nextReviewDate,
           iteration: nextIteration,
           ease: result,
@@ -189,9 +188,7 @@ export default function Review() {
     updatedWords[currentIndex].reviewed = true;
     updatedWords[currentIndex].reviewCount =
       (updatedWords[currentIndex].reviewCount || 0) + 1;
-    updatedWords[currentIndex].lastReviewedDate = new Date()
-      .toISOString()
-      .split("T")[0];
+    updatedWords[currentIndex].lastReviewedDate = getIsoDate();
     updatedWords[currentIndex].nextReviewDate = nextReviewDate;
     updatedWords[currentIndex].iteration = nextIteration;
     updatedWords[currentIndex].ease = result;
