@@ -21,6 +21,7 @@ import {
   groupWordsAsSingleGroup,
   groupWordsByCategory,
   ReviewWord,
+  ScheduleSnapshot,
 } from "@/shared/groupWordsByCategory";
 import { loadStoredWords, saveWords } from "@/shared/words";
 import { shouldUseContinuousBars } from "@/shared/reviewProgress";
@@ -167,10 +168,21 @@ export default function Review() {
   const markAsReviewed = (known: boolean) => {
     const currentWord = words[currentIndex];
     const result = known ? EASE.KNOWN : EASE.UNKNOWN;
+    const isAnswerChange = currentWord.reviewed;
+
+    // Changing an answer recomputes from the state the word had before the
+    // first one, so switching back and forth does not stack up
+    const beforeAnswer: ScheduleSnapshot = currentWord.beforeAnswer ?? {
+      reviewCount: currentWord.reviewCount || 0,
+      lastReviewedDate: currentWord.lastReviewedDate,
+      nextReviewDate: currentWord.nextReviewDate,
+      iteration: currentWord.iteration || 0,
+      ease: currentWord.ease,
+    };
 
     // Known -> advance iteration (spaced further apart)
     // Unknown -> drop by 2 iterations (floor at 0)
-    const currentIteration = currentWord.iteration || 0;
+    const currentIteration = beforeAnswer.iteration || 0;
     const nextIteration = preserveSchedule
       ? currentIteration
       : known && isFilteredSession
@@ -187,35 +199,33 @@ export default function Review() {
     const nextDate = new Date();
     nextDate.setDate(nextDate.getDate() + nextInterval);
     const nextReviewDate = preserveSchedule
-      ? currentWord.nextReviewDate
+      ? beforeAnswer.nextReviewDate
       : getIsoDate(nextDate);
 
-    const updatedAllWords = loadStoredWords().map((w) => {
-      if (w.id === currentWord.id) {
-        return {
-          ...w,
-          reviewCount: (w.reviewCount || 0) + 1,
-          lastReviewedDate: getIsoDate(),
-          nextReviewDate,
-          iteration: nextIteration,
-          ease: result,
-        };
-      }
-      return w;
-    });
+    const answered = {
+      reviewCount: (beforeAnswer.reviewCount || 0) + 1,
+      lastReviewedDate: getIsoDate(),
+      nextReviewDate,
+      iteration: nextIteration,
+      ease: result,
+    };
+
+    const updatedAllWords = loadStoredWords().map((w) =>
+      w.id === currentWord.id ? { ...w, ...answered } : w,
+    );
 
     saveWords(updatedAllWords);
 
     // Update local state
-    const updatedWords = [...words];
-    updatedWords[currentIndex].reviewed = true;
-    updatedWords[currentIndex].reviewCount =
-      (updatedWords[currentIndex].reviewCount || 0) + 1;
-    updatedWords[currentIndex].lastReviewedDate = getIsoDate();
-    updatedWords[currentIndex].nextReviewDate = nextReviewDate;
-    updatedWords[currentIndex].iteration = nextIteration;
-    updatedWords[currentIndex].ease = result;
+    const updatedWords = words.map((w, index) =>
+      index === currentIndex
+        ? { ...w, ...answered, reviewed: true, beforeAnswer }
+        : w,
+    );
     setWords(updatedWords);
+
+    // Changing an answer stays on the card so the new choice stays visible
+    if (isAnswerChange) return;
 
     // Check if it was the last word
     if (updatedWords.every((w) => w.reviewed)) {
@@ -476,16 +486,20 @@ export default function Review() {
       {/* Controls */}
       <div className="space-y-3">
         <div className="text-center text-sm text-gray-400 mb-3">
-          Did you remember this word?
+          {currentWord.reviewed
+            ? "Your answer - pick the other one to change it"
+            : "Did you remember this word?"}
         </div>
         <div className="flex gap-3">
           <button
             onClick={() => markAsReviewed(false)}
-            disabled={currentWord.reviewed}
+            aria-pressed={currentWord.reviewed && currentWord.ease === EASE.UNKNOWN}
             className={`flex-1 py-3.5 rounded-lg transition-all flex items-center justify-center gap-2 font-medium ${
-              currentWord.reviewed
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-white text-gray-900 border border-gray-300 hover:bg-gray-100"
+              !currentWord.reviewed
+                ? "bg-white text-gray-900 border border-gray-300 hover:bg-gray-100"
+                : currentWord.ease === EASE.UNKNOWN
+                  ? "bg-gray-900 text-white"
+                  : "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
             }`}
           >
             <X className="w-5 h-5" />
@@ -493,11 +507,13 @@ export default function Review() {
           </button>
           <button
             onClick={() => markAsReviewed(true)}
-            disabled={currentWord.reviewed}
+            aria-pressed={currentWord.reviewed && currentWord.ease === EASE.KNOWN}
             className={`flex-1 py-3.5 rounded-lg transition-all flex items-center justify-center gap-2 font-medium ${
-              currentWord.reviewed
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-orange-600 text-white hover:bg-orange-700"
+              !currentWord.reviewed
+                ? "bg-orange-600 text-white hover:bg-orange-700"
+                : currentWord.ease === EASE.KNOWN
+                  ? "bg-orange-600 text-white"
+                  : "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
             }`}
           >
             <Check className="w-5 h-5" />

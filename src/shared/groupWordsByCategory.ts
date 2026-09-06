@@ -1,7 +1,18 @@
 import { Word } from "./types";
 import { shuffle } from "./shuffle";
 
-export type ReviewWord = Word & { reviewed: boolean; assignedCategory: string };
+/** Scheduling state a word had before this session's answer. */
+export type ScheduleSnapshot = Pick<
+  Word,
+  "reviewCount" | "lastReviewedDate" | "nextReviewDate" | "iteration" | "ease"
+>;
+
+export type ReviewWord = Word & {
+  reviewed: boolean;
+  assignedCategory: string;
+  /** Kept on the first answer so the answer can be changed without compounding */
+  beforeAnswer?: ScheduleSnapshot;
+};
 
 export interface CategoryGroup {
   category: string;
