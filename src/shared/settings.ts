@@ -3,6 +3,9 @@ export const SETTINGS_KEY = "settings";
 /** Default size of the daily draw, used when the limit is switched on. */
 export const DEFAULT_DAILY_WORD_LIMIT = 15;
 
+/** Default floor of the day, used when the minimum is switched on. */
+export const DEFAULT_DAILY_MINIMUM_WORDS = 15;
+
 export interface Settings {
   /**
    * When true, a daily review session draws at most `dailyWordLimit` words
@@ -10,23 +13,33 @@ export interface Settings {
    */
   dailyLimitEnabled: boolean;
   dailyWordLimit: number;
+  /**
+   * When true, a day with fewer than `dailyMinimumWords` cards is topped up
+   * with words drawn at random from the rest of the list.
+   */
+  dailyMinimumEnabled: boolean;
+  dailyMinimumWords: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   dailyLimitEnabled: false,
   dailyWordLimit: DEFAULT_DAILY_WORD_LIMIT,
+  dailyMinimumEnabled: false,
+  dailyMinimumWords: DEFAULT_DAILY_MINIMUM_WORDS,
 };
+
+function positiveCount(value: unknown, fallback: number): number {
+  const count = Number(value);
+  return Number.isFinite(count) && count >= 1 ? Math.floor(count) : fallback;
+}
 
 /** Normalizes a stored record into the current Settings shape. */
 export function migrateSettings(raw: any): Settings {
-  const limit = Number(raw?.dailyWordLimit);
-
   return {
     dailyLimitEnabled: raw?.dailyLimitEnabled === true,
-    dailyWordLimit:
-      Number.isFinite(limit) && limit >= 1
-        ? Math.floor(limit)
-        : DEFAULT_DAILY_WORD_LIMIT,
+    dailyWordLimit: positiveCount(raw?.dailyWordLimit, DEFAULT_DAILY_WORD_LIMIT),
+    dailyMinimumEnabled: raw?.dailyMinimumEnabled === true,
+    dailyMinimumWords: positiveCount(raw?.dailyMinimumWords, DEFAULT_DAILY_MINIMUM_WORDS),
   };
 }
 

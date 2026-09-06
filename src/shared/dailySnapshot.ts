@@ -1,5 +1,6 @@
 import { getIsoDate } from "./dates";
 import { ensureDailyDraw } from "./dailySelection";
+import { ensureDailyFillers } from "./dailyMinimum";
 import { loadSettings } from "./settings";
 import { loadStoredWords } from "./words";
 import { Word } from "./types";
@@ -27,19 +28,28 @@ function loadSnapshots(): Record<string, string[]> {
  * With the daily limit on, that set is the day's draw itself: the draw already
  * records every word assigned to today, so there is no second copy to keep in
  * sync when the limit changes and the day is drawn again.
+ *
+ * With the daily minimum on, a short day is topped up with fillers drawn from
+ * the rest of the list; they are part of the day like any due word.
  */
 export function ensureDailySnapshot(today: string = getIsoDate()): string[] {
-  const dueWords = dueWordsFor(loadStoredWords(), today);
-  const { dailyLimitEnabled, dailyWordLimit } = loadSettings();
+  const storedWords = loadStoredWords();
+  const dueWords = dueWordsFor(storedWords, today);
+  const { dailyLimitEnabled, dailyWordLimit, dailyMinimumEnabled, dailyMinimumWords } =
+    loadSettings();
 
+  let dayIds: string[];
   if (dailyLimitEnabled) {
-    return ensureDailyDraw(dueWords, dailyWordLimit, today).wordIds;
+    dayIds = ensureDailyDraw(dueWords, dailyWordLimit, today).wordIds;
+  } else {
+    const snapshots = loadSnapshots();
+    if (!snapshots[today]) {
+      snapshots[today] = dueWords.map((w) => w.id);
+      localStorage.setItem(DAILY_REVIEW_SNAPSHOTS_KEY, JSON.stringify(snapshots));
+    }
+    dayIds = snapshots[today];
   }
 
-  const snapshots = loadSnapshots();
-  if (!snapshots[today]) {
-    snapshots[today] = dueWords.map((w) => w.id);
-    localStorage.setItem(DAILY_REVIEW_SNAPSHOTS_KEY, JSON.stringify(snapshots));
-  }
-  return snapshots[today];
+  if (!dailyMinimumEnabled) return dayIds;
+  return [...dayIds, ...ensureDailyFillers(dayIds, storedWords, dailyMinimumWords, today)];
 }

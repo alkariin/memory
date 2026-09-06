@@ -11,6 +11,7 @@ import {
   PartyPopper,
   Tag,
   Shuffle,
+  Sparkles,
   List,
 } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -26,7 +27,7 @@ import { loadStoredWords, saveWords } from "@/shared/words";
 import { shouldUseContinuousBars } from "@/shared/reviewProgress";
 import { dueWordsFor, ensureDailySnapshot } from "@/shared/dailySnapshot";
 import { loadSettings } from "@/shared/settings";
-import { ensureDailyDraw } from "@/shared/dailySelection";
+import { loadDailyFillers } from "@/shared/dailyMinimum";
 import {
   applySessionOrder,
   firstUnreviewedIndex,
@@ -52,6 +53,9 @@ export default function Review() {
   const [preserveSchedule, setPreserveSchedule] = useState(false);
   const [dailyLimit, setDailyLimit] = useState<number | null>(null);
   const [dailyLimitReached, setDailyLimitReached] = useState(false);
+  const [dailyMinimum, setDailyMinimum] = useState<number | null>(null);
+  // Words that top the day up to the minimum, drawn beyond what was due
+  const [fillerIds, setFillerIds] = useState<Set<string>>(new Set());
   const [dayComplete, setDayComplete] = useState(false);
   // The category the session is about to enter, shown on a card of its own
   const [pendingCategory, setPendingCategory] = useState<string | null>(null);
@@ -94,6 +98,8 @@ export default function Review() {
       isDailySession = false;
       setDayComplete(false);
       setDailyLimit(null);
+      setDailyMinimum(null);
+      setFillerIds(new Set());
       setDailyLimitReached(false);
 
       if (filter.type === "predefined") {
@@ -120,18 +126,15 @@ export default function Review() {
       setPreserveSchedule(false);
       const dueWords = dueWordsFor(storedWords, today);
 
-      // The day's word ids, answered ones included, so the session resumes
-      // where it was left instead of losing the words already reviewed
-      const { dailyLimitEnabled, dailyWordLimit } = loadSettings();
-      let sessionIds: string[];
-      if (dailyLimitEnabled) {
-        setDailyLimit(dailyWordLimit);
-        isDrawnSession = true;
-        sessionIds = ensureDailyDraw(dueWords, dailyWordLimit, today).wordIds;
-      } else {
-        setDailyLimit(null);
-        sessionIds = ensureDailySnapshot(today);
-      }
+      // The day's word ids, answered ones and fillers included, so the session
+      // resumes where it was left instead of losing the words already reviewed
+      const { dailyLimitEnabled, dailyWordLimit, dailyMinimumEnabled, dailyMinimumWords } =
+        loadSettings();
+      setDailyLimit(dailyLimitEnabled ? dailyWordLimit : null);
+      setDailyMinimum(dailyMinimumEnabled ? dailyMinimumWords : null);
+      isDrawnSession = dailyLimitEnabled;
+      const sessionIds = ensureDailySnapshot(today);
+      setFillerIds(new Set(dailyMinimumEnabled ? loadDailyFillers(today) ?? [] : []));
 
       rawWords = resumeSessionWords(storedWords, sessionIds, today);
       const allAnswered = sessionIds.length > 0 && rawWords.length === 0;
@@ -363,12 +366,20 @@ export default function Review() {
             )}
           </div>
         )}
-        {dailyLimit !== null && (
+        {(dailyLimit !== null || dailyMinimum !== null) && (
           <div className="flex items-center gap-2 mt-2 mb-3">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs border border-gray-200">
-              <Shuffle className="w-3 h-3" />
-              {dailyLimit} words a day
-            </span>
+            {dailyLimit !== null && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs border border-gray-200">
+                <Shuffle className="w-3 h-3" />
+                {dailyLimit} words a day
+              </span>
+            )}
+            {dailyMinimum !== null && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs border border-gray-200">
+                <Sparkles className="w-3 h-3" />
+                at least {dailyMinimum} a day
+              </span>
+            )}
           </div>
         )}
         {preserveSchedule && (
@@ -461,17 +472,30 @@ export default function Review() {
                 </div>
               )}
 
-              {/* Category */}
-              {currentWord.category && (
-                <div className="flex justify-center mt-4">
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 text-orange-600 rounded text-xs ${
-                      showingDefinition ? "bg-white" : "bg-orange-50"
-                    }`}
-                  >
-                    <Tag className="w-3 h-3" />
-                    {currentWord.category}
-                  </span>
+              {/* Category, and whether the word is a filler beyond the due ones */}
+              {(currentWord.category || fillerIds.has(currentWord.id)) && (
+                <div className="flex justify-center gap-2 mt-4">
+                  {currentWord.category && (
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 text-orange-600 rounded text-xs ${
+                        showingDefinition ? "bg-white" : "bg-orange-50"
+                      }`}
+                    >
+                      <Tag className="w-3 h-3" />
+                      {currentWord.category}
+                    </span>
+                  )}
+                  {fillerIds.has(currentWord.id) && (
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 text-gray-500 rounded text-xs ${
+                        showingDefinition ? "bg-white" : "bg-gray-100"
+                      }`}
+                      title="Not due today: drawn to reach the daily minimum"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      Extra
+                    </span>
+                  )}
                 </div>
               )}
             </div>
