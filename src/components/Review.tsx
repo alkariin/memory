@@ -11,6 +11,7 @@ import {
   PartyPopper,
   Tag,
   Shuffle,
+  List,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { EASE, ReviewFilterPayload, Word } from "@/shared/types";
@@ -332,6 +333,16 @@ export default function Review() {
               <CheckCircle2 className="w-5 h-5" />
             </div>
           )}
+
+          {/* Shortcut to this word in the list */}
+          <button
+            onClick={() => navigate(`/list?word=${currentWord.id}`)}
+            className="absolute top-4 left-4 p-2 text-gray-300 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
+            aria-label="Show in the list"
+            title="Show in the list"
+          >
+            <List className="w-5 h-5" />
+          </button>
 
           <div className="p-8 flex flex-col items-center justify-center h-full min-h-[320px]">
             {!hasCorrelation || showWord ? (

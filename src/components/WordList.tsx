@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Trash2, List, Tag, Filter, Search, RotateCcw, Clock, Pencil, BookOpen } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { PREDEFINED_REVIEW_FILTER, ReviewFilterPayload, Word } from '@/shared/types';
 import { getIsoDate } from '@/shared/dates';
 import { loadStoredWords, saveWords } from '@/shared/words';
@@ -33,6 +33,8 @@ const getFilterLabel = (category: string | null) => {
 
 export default function WordList() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [words, setWords] = useState<Word[]>([]);
   const [groupedWords, setGroupedWords] = useState<GroupedWords>({});
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -45,6 +47,30 @@ export default function WordList() {
   useEffect(() => {
     loadWords();
   }, [selectedCategory, searchQuery]);
+
+  // `?word=<id>` (from a review card) points at one word: clear the filters so
+  // it is visible, then drop the param so a refresh does not replay it
+  useEffect(() => {
+    const id = searchParams.get('word');
+    if (!id) return;
+
+    setHighlightedId(id);
+    setSelectedCategory(null);
+    setSearchQuery('');
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Scroll the targeted word into view, then fade the highlight out
+  useEffect(() => {
+    if (!highlightedId) return;
+
+    document
+      .getElementById(`word-${highlightedId}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const timeout = setTimeout(() => setHighlightedId(null), 2500);
+    return () => clearTimeout(timeout);
+  }, [highlightedId, words]);
 
   const loadWords = () => {
     const storedWords = loadStoredWords();
@@ -342,7 +368,12 @@ export default function WordList() {
                   {groupedWords[date].map((word) => (
                     <div
                       key={word.id}
-                      className="bg-white rounded-lg p-4 border border-gray-200 hover:border-orange-200 hover:shadow-md transition-all group"
+                      id={`word-${word.id}`}
+                      className={`bg-white rounded-lg p-4 border hover:border-orange-200 hover:shadow-md transition-all group ${
+                        highlightedId === word.id
+                          ? 'border-orange-300 ring-2 ring-orange-400'
+                          : 'border-gray-200'
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
