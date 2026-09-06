@@ -1,11 +1,5 @@
-import { Word } from "./types";
+import { ScheduleSnapshot, Word } from "./types";
 import { shuffle } from "./shuffle";
-
-/** Scheduling state a word had before this session's answer. */
-export type ScheduleSnapshot = Pick<
-  Word,
-  "reviewCount" | "lastReviewedDate" | "nextReviewDate" | "iteration" | "ease"
->;
 
 export type ReviewWord = Word & {
   reviewed: boolean;

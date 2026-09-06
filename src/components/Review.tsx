@@ -14,20 +14,28 @@ import {
   List,
 } from "lucide-react";
 import { useNavigate } from "react-router";
-import { EASE, ReviewFilterPayload, Word } from "@/shared/types";
+import { EASE, ReviewFilterPayload, ScheduleSnapshot, Word } from "@/shared/types";
 import { getIsoDate } from "@/shared/dates";
 import {
   CategoryGroup,
   groupWordsAsSingleGroup,
   groupWordsByCategory,
   ReviewWord,
-  ScheduleSnapshot,
 } from "@/shared/groupWordsByCategory";
 import { loadStoredWords, saveWords } from "@/shared/words";
 import { shouldUseContinuousBars } from "@/shared/reviewProgress";
-import { dueWordsFor } from "@/shared/dailySnapshot";
+import { dueWordsFor, ensureDailySnapshot } from "@/shared/dailySnapshot";
 import { loadSettings } from "@/shared/settings";
 import { ensureDailyDraw } from "@/shared/dailySelection";
+import {
+  applySessionOrder,
+  firstUnreviewedIndex,
+  loadAnswerSnapshots,
+  loadSessionOrder,
+  resumeSessionWords,
+  saveAnswerSnapshot,
+  saveSessionOrder,
+} from "@/shared/reviewSession";
 
 const INTERVAL = [0, 1, 3, 7, 14, 30, 60, 120, 240];
 
@@ -44,6 +52,7 @@ export default function Review() {
   const [preserveSchedule, setPreserveSchedule] = useState(false);
   const [dailyLimit, setDailyLimit] = useState<number | null>(null);
   const [dailyLimitReached, setDailyLimitReached] = useState(false);
+  const [dayComplete, setDayComplete] = useState(false);
   const [categoryTransition, setCategoryTransition] = useState(false);
 
   // Lookup maps so the progress row stays O(n) instead of scanning words per segment
@@ -73,12 +82,16 @@ export default function Review() {
     let rawWords: (Word & { reviewed: boolean })[] = [];
     // A limited session mixes categories, so it is grouped as one block
     let isDrawnSession = false;
+    // The day's own session, as opposed to one started from the list
+    let isDailySession = true;
 
     // Check if there's an active filter
     const filterData = localStorage.getItem("reviewFilter");
     if (filterData) {
       const filter = JSON.parse(filterData) as ReviewFilterPayload;
 
+      isDailySession = false;
+      setDayComplete(false);
       setDailyLimit(null);
       setDailyLimitReached(false);
 
@@ -106,27 +119,53 @@ export default function Review() {
       setPreserveSchedule(false);
       const dueWords = dueWordsFor(storedWords, today);
 
+      // The day's word ids, answered ones included, so the session resumes
+      // where it was left instead of losing the words already reviewed
       const { dailyLimitEnabled, dailyWordLimit } = loadSettings();
+      let sessionIds: string[];
       if (dailyLimitEnabled) {
         setDailyLimit(dailyWordLimit);
         isDrawnSession = true;
-        const { words: drawn } = ensureDailyDraw(dueWords, dailyWordLimit, today);
-        rawWords = drawn.map((w) => ({ ...w, reviewed: false }));
-        // Today's draw is done while words remain due: they wait for tomorrow
-        setDailyLimitReached(drawn.length === 0 && dueWords.length > 0);
+        sessionIds = ensureDailyDraw(dueWords, dailyWordLimit, today).wordIds;
       } else {
         setDailyLimit(null);
-        setDailyLimitReached(false);
-        rawWords = dueWords.map((w) => ({ ...w, reviewed: false }));
+        sessionIds = ensureDailySnapshot(today);
       }
+
+      rawWords = resumeSessionWords(storedWords, sessionIds, today);
+      const allAnswered = sessionIds.length > 0 && rawWords.length === 0;
+      setDayComplete(allAnswered);
+      // Today's words are all answered while others remain due: they wait for tomorrow
+      setDailyLimitReached(dailyLimitEnabled && allAnswered && dueWords.length > 0);
     }
 
     // Group by category, unless the words were drawn across all categories
     const { grouped, categoryGroups: groups } = isDrawnSession
       ? groupWordsAsSingleGroup(rawWords)
       : groupWordsByCategory(rawWords);
-    setWords(grouped);
-    setCategoryGroups(groups);
+
+    // A session of the day keeps the order it was first shown in; a filtered
+    // one is started on demand, so it is shuffled anew every time
+    const ordered = isDailySession
+      ? applySessionOrder(grouped, loadSessionOrder(today))
+      : grouped;
+    if (isDailySession) saveSessionOrder(ordered.map((w) => w.id), today);
+
+    const snapshots = isDailySession ? loadAnswerSnapshots(today) : {};
+    const restored = ordered.map((w) =>
+      w.reviewed && snapshots[w.id] ? { ...w, beforeAnswer: snapshots[w.id] } : w,
+    );
+
+    const orderedGroups = groups.map((group) => ({
+      ...group,
+      wordIds: restored
+        .filter((w) => w.assignedCategory === group.category)
+        .map((w) => w.id),
+    }));
+
+    setWords(restored);
+    setCategoryGroups(orderedGroups);
+    setCurrentIndex(firstUnreviewedIndex(restored));
   };
 
   const handleFlip = () => {
@@ -215,6 +254,7 @@ export default function Review() {
     );
 
     saveWords(updatedAllWords);
+    if (!isAnswerChange) saveAnswerSnapshot(currentWord.id, beforeAnswer);
 
     // Update local state
     const updatedWords = words.map((w, index) =>
@@ -252,6 +292,8 @@ export default function Review() {
     setShowCompletionDialog(false);
     setCurrentIndex(0);
     setShowWord(false);
+    // A session of the day ends the day; a filtered one leaves it untouched
+    if (!isFilteredSession) setDayComplete(true);
   };
 
   if (words.length === 0) {
@@ -262,19 +304,23 @@ export default function Review() {
             <BookOpen className="w-8 h-8 text-orange-300" />
           </div>
           <h2 className="text-gray-900 mb-1">
-            Ready to review?
+            {dayComplete ? "All done for today" : "Ready to review?"}
           </h2>
           <p className="text-gray-500 text-sm mb-1">
             {filterLabel
               ? `No words in the category "${filterLabel}"`
               : dailyLimitReached
                 ? `You are done for today (${dailyLimit} words)`
-                : "No words to review"}
+                : dayComplete
+                  ? "Every word of the day has been reviewed"
+                  : "No words to review"}
           </p>
           <p className="text-sm text-gray-400">
             {dailyLimitReached
               ? "The remaining words wait for tomorrow"
-              : "Add words to get started"}
+              : dayComplete
+                ? "Come back tomorrow for the next ones"
+                : "Add words to get started"}
           </p>
         </div>
       </div>

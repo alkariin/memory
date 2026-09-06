@@ -16,6 +16,12 @@ export interface Word {
   ease: EASE;
 }
 
+/** The scheduling fields a review answer rewrites. */
+export type ScheduleSnapshot = Pick<
+  Word,
+  "reviewCount" | "lastReviewedDate" | "nextReviewDate" | "iteration" | "ease"
+>;
+
 export enum PREDEFINED_REVIEW_FILTER {
   TODAY = "PREDEFINED_TODAY",
   TOMORROW = "PREDEFINED_TOMORROW",
