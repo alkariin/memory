@@ -32,22 +32,27 @@ describe("groupWordsByCategory", () => {
     ];
 
     const { categoryGroups } = groupWordsByCategory(words);
+    const groupOf = (category: string) =>
+      categoryGroups.find((g) => g.category === category)!;
 
     expect(categoryGroups).toHaveLength(2);
-    expect(categoryGroups[0].category).toBe("A");
-    expect(categoryGroups[0].wordIds).toContain("w1");
-    expect(categoryGroups[0].wordIds).toContain("w3");
-    expect(categoryGroups[0].wordIds).toHaveLength(2);
-    expect(categoryGroups[1].category).toBe("B");
-    expect(categoryGroups[1].wordIds).toEqual(["w2"]);
+    expect(groupOf("A").wordIds).toHaveLength(2);
+    expect(groupOf("A").wordIds).toContain("w1");
+    expect(groupOf("A").wordIds).toContain("w3");
+    expect(groupOf("B").wordIds).toEqual(["w2"]);
   });
 
-  it("sorts categories alphabetically", () => {
-    const words = [makeWord("w1", "C"), makeWord("w2", "A"), makeWord("w3", "B")];
+  it("draws the category order at random", () => {
+    // A fixed order would come out alphabetical every time
+    const orders = Array.from({ length: 20 }, () => {
+      const words = [makeWord("w1", "C"), makeWord("w2", "A"), makeWord("w3", "B")];
+      return groupWordsByCategory(words)
+        .categoryGroups.map((g) => g.category)
+        .join();
+    });
 
-    const { categoryGroups } = groupWordsByCategory(words);
-
-    expect(categoryGroups.map((g) => g.category)).toEqual(["A", "B", "C"]);
+    expect(orders.filter((order) => order === "A,B,C").length).toBeLessThan(20);
+    expect(new Set(orders).size).toBeGreaterThan(1);
   });
 
   it("puts uncategorized words last", () => {
@@ -71,9 +76,12 @@ describe("groupWordsByCategory", () => {
   it("keeps grouped words in category-group order", () => {
     const words = [makeWord("w1", "B"), makeWord("w2", null), makeWord("w3", "A")];
 
-    const { grouped } = groupWordsByCategory(words);
+    const { grouped, categoryGroups } = groupWordsByCategory(words);
 
-    expect(grouped.map((w) => w.assignedCategory)).toEqual(["A", "B", UNCATEGORIZED]);
+    expect(grouped.map((w) => w.assignedCategory)).toEqual(
+      categoryGroups.map((g) => g.category),
+    );
+    expect(grouped[grouped.length - 1].assignedCategory).toBe(UNCATEGORIZED);
   });
 
   it("does not duplicate a word across groups", () => {

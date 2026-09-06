@@ -36,8 +36,9 @@ export function groupWordsAsSingleGroup(
 
 /**
  * Groups words by category for the review session.
- * Each word appears in exactly one group; words without a category
- * land in the trailing "Uncategorized" group.
+ * Each word appears in exactly one group; the category order is drawn at
+ * random so the day does not always open on the same ones, and words without
+ * a category land in the trailing "Uncategorized" group.
  */
 export function groupWordsByCategory(
   words: (Word & { reviewed: boolean })[],
@@ -53,12 +54,12 @@ export function groupWordsByCategory(
     categoryMap.get(category)!.push(word.id);
   }
 
-  // Build ordered category groups (uncategorized last)
-  const categoryOrder = Array.from(categoryMap.keys()).sort((a, b) => {
-    if (a === UNCATEGORIZED) return 1;
-    if (b === UNCATEGORIZED) return -1;
-    return a.localeCompare(b);
-  });
+  // Build the category order at random, uncategorized last
+  const categories = shuffle(Array.from(categoryMap.keys()));
+  const categoryOrder = [
+    ...categories.filter((c) => c !== UNCATEGORIZED),
+    ...categories.filter((c) => c === UNCATEGORIZED),
+  ];
 
   const categoryGroups: CategoryGroup[] = categoryOrder.map((category) => ({
     category,
