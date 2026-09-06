@@ -53,7 +53,8 @@ export default function Review() {
   const [dailyLimit, setDailyLimit] = useState<number | null>(null);
   const [dailyLimitReached, setDailyLimitReached] = useState(false);
   const [dayComplete, setDayComplete] = useState(false);
-  const [categoryTransition, setCategoryTransition] = useState(false);
+  // The category the session is about to enter, shown on a card of its own
+  const [pendingCategory, setPendingCategory] = useState<string | null>(null);
 
   // Lookup maps so the progress row stays O(n) instead of scanning words per segment
   const wordById = useMemo(
@@ -166,6 +167,7 @@ export default function Review() {
     setWords(restored);
     setCategoryGroups(orderedGroups);
     setCurrentIndex(firstUnreviewedIndex(restored));
+    setPendingCategory(null);
   };
 
   const handleFlip = () => {
@@ -276,10 +278,9 @@ export default function Review() {
       const currentCategory = updatedWords[currentIndex].assignedCategory;
       const nextCategory = updatedWords[nextIndex].assignedCategory;
 
-      // Show category transition animation if changing groups
+      // Announce the new group on a card of its own before its first word
       if (currentCategory !== nextCategory) {
-        setCategoryTransition(true);
-        setTimeout(() => setCategoryTransition(false), 1500);
+        setPendingCategory(nextCategory);
       }
 
       setShowWord(false);
@@ -292,6 +293,7 @@ export default function Review() {
     setShowCompletionDialog(false);
     setCurrentIndex(0);
     setShowWord(false);
+    setPendingCategory(null);
     // A session of the day ends the day; a filtered one leaves it untouched
     if (!isFilteredSession) setDayComplete(true);
   };
@@ -328,6 +330,9 @@ export default function Review() {
   }
 
   const currentWord = words[currentIndex];
+  const pendingCategoryCount = pendingCategory
+    ? words.filter((w) => w.assignedCategory === pendingCategory && !w.reviewed).length
+    : 0;
   const isFirstWord = currentIndex === 0;
   const isLastWord = currentIndex === words.length - 1;
   const hasCorrelation =
@@ -375,99 +380,123 @@ export default function Review() {
 
       {/* Card */}
       <div className="flex-1 flex flex-col items-center justify-center mb-6">
-        <div
-          className={`relative w-full rounded-lg border overflow-hidden transition-all ${
-            showingDefinition
-              ? "bg-orange-50 border-orange-200"
-              : "bg-white border-gray-200"
-          }`}
-          style={{ minHeight: "320px" }}
-        >
-          {/* Reviewed Badge */}
-          {currentWord.reviewed && (
-            <div className="absolute top-4 right-4 bg-orange-500 text-white p-2 rounded-lg">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-          )}
-
-          {/* Shortcut to this word in the list */}
+        {pendingCategory ? (
+          /* Announces the group the session moves into, so the change is not missed */
           <button
-            onClick={() => navigate(`/list?word=${currentWord.id}`)}
-            className="absolute top-4 left-4 p-2 text-gray-300 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
-            aria-label="Show in the list"
-            title="Show in the list"
+            onClick={() => setPendingCategory(null)}
+            className="w-full rounded-lg border border-orange-200 bg-orange-50 p-8 flex flex-col items-center justify-center text-center transition-all hover:bg-orange-100"
+            style={{ minHeight: "320px" }}
           >
-            <List className="w-5 h-5" />
+            <span className="text-xs uppercase tracking-wide text-orange-400 mb-4">
+              Next category
+            </span>
+            <span className="inline-flex items-center gap-2 text-2xl text-gray-900 font-bold mb-2">
+              <Tag className="w-5 h-5 text-orange-500" />
+              {pendingCategory}
+            </span>
+            <span className="text-sm text-gray-500 mb-8">
+              {pendingCategoryCount} word{pendingCategoryCount > 1 ? "s" : ""} to review
+            </span>
+            <span className="inline-flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-lg font-medium">
+              Start
+              <ChevronRight className="w-4 h-4" />
+            </span>
           </button>
+        ) : (
+          <div
+            className={`relative w-full rounded-lg border overflow-hidden transition-all ${
+              showingDefinition
+                ? "bg-orange-50 border-orange-200"
+                : "bg-white border-gray-200"
+            }`}
+            style={{ minHeight: "320px" }}
+          >
+            {/* Reviewed Badge */}
+            {currentWord.reviewed && (
+              <div className="absolute top-4 right-4 bg-orange-500 text-white p-2 rounded-lg">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+            )}
 
-          <div className="p-8 flex flex-col items-center justify-center h-full min-h-[320px]">
-            {!hasCorrelation || showWord ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center">
-                <span className="text-xs uppercase tracking-wide text-gray-400 mb-4">Word</span>
-                <div className="text-2xl text-gray-900 mb-8 font-bold">
-                  {currentWord.word}
+            {/* Shortcut to this word in the list */}
+            <button
+              onClick={() => navigate(`/list?word=${currentWord.id}`)}
+              className="absolute top-4 left-4 p-2 text-gray-300 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
+              aria-label="Show in the list"
+              title="Show in the list"
+            >
+              <List className="w-5 h-5" />
+            </button>
+
+            <div className="p-8 flex flex-col items-center justify-center h-full min-h-[320px]">
+              {!hasCorrelation || showWord ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                  <span className="text-xs uppercase tracking-wide text-gray-400 mb-4">Word</span>
+                  <div className="text-2xl text-gray-900 mb-8 font-bold">
+                    {currentWord.word}
+                  </div>
+                  {hasCorrelation && (
+                    <button
+                      onClick={handleFlip}
+                      className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 text-sm px-4 py-2 rounded-lg hover:bg-orange-50 transition-all"
+                    >
+                      <EyeOff className="w-4 h-4" />
+                      Hide the word
+                    </button>
+                  )}
                 </div>
-                {hasCorrelation && (
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                  <span className="text-xs uppercase tracking-wide text-gray-400 mb-4">Definition</span>
+                  <div className="text-2xl text-gray-900 leading-relaxed mb-8 max-w-sm font-bold">
+                    {currentWord.correlation}
+                  </div>
                   <button
                     onClick={handleFlip}
-                    className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 text-sm px-4 py-2 rounded-lg hover:bg-orange-50 transition-all"
+                    className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 text-sm px-4 py-2 rounded-lg hover:bg-orange-100 transition-all"
                   >
-                    <EyeOff className="w-4 h-4" />
-                    Hide the word
+                    <Eye className="w-4 h-4" />
+                    Show the word
                   </button>
-                )}
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center">
-                <span className="text-xs uppercase tracking-wide text-gray-400 mb-4">Definition</span>
-                <div className="text-2xl text-gray-900 leading-relaxed mb-8 max-w-sm font-bold">
-                  {currentWord.correlation}
                 </div>
-                <button
-                  onClick={handleFlip}
-                  className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 text-sm px-4 py-2 rounded-lg hover:bg-orange-100 transition-all"
-                >
-                  <Eye className="w-4 h-4" />
-                  Show the word
-                </button>
-              </div>
-            )}
+              )}
 
-            {/* Category */}
-            {currentWord.category && (
-              <div className={`flex justify-center mt-4 ${categoryTransition ? "animate-category-pulse" : ""}`}>
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 text-orange-600 rounded text-xs ${
-                    showingDefinition ? "bg-white" : "bg-orange-50"
-                  }`}
-                >
-                  <Tag className="w-3 h-3" />
-                  {currentWord.category}
-                </span>
-              </div>
-            )}
-          </div>
+              {/* Category */}
+              {currentWord.category && (
+                <div className="flex justify-center mt-4">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 text-orange-600 rounded text-xs ${
+                      showingDefinition ? "bg-white" : "bg-orange-50"
+                    }`}
+                  >
+                    <Tag className="w-3 h-3" />
+                    {currentWord.category}
+                  </span>
+                </div>
+              )}
+            </div>
 
-          {/* Navigation Arrows */}
-          <div className="absolute bottom-6 left-6 right-6 flex justify-between">
-            <button
-              onClick={handlePrevious}
-              disabled={isFirstWord}
-              aria-label="Previous word"
-              className="w-10 h-10 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-lg transition-all flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={isLastWord}
-              aria-label="Next word"
-              className="w-10 h-10 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-lg transition-all flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
+            {/* Navigation Arrows */}
+            <div className="absolute bottom-6 left-6 right-6 flex justify-between">
+              <button
+                onClick={handlePrevious}
+                disabled={isFirstWord}
+                aria-label="Previous word"
+                className="w-10 h-10 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-lg transition-all flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleNext}
+                disabled={isLastWord}
+                aria-label="Next word"
+                className="w-10 h-10 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-lg transition-all flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Progress - grouped by category */}
@@ -530,7 +559,7 @@ export default function Review() {
       </div>
 
       {/* Controls */}
-      <div className="space-y-3">
+      <div className={`space-y-3 ${pendingCategory ? "invisible" : ""}`}>
         <div className="text-center text-sm text-gray-400 mb-3">
           {currentWord.reviewed
             ? "Your answer - pick the other one to change it"
