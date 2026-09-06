@@ -9,7 +9,8 @@ export const router = createBrowserRouter([
     path: "/",
     Component: Layout,
     children: [
-      { path: "/", Component: AddWord },
+      { path: "/", Component: Review },
+      { path: "/add", Component: AddWord },
       { path: "/edit/:id", Component: AddWord },
       { path: "/list", Component: WordList },
       { path: "/review", Component: Review },

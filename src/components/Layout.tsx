@@ -23,7 +23,8 @@ export default function Layout() {
   }, []);
 
   const isActive = (path: string) => {
-    if (path === '/' && location.pathname.startsWith('/edit/')) return true;
+    if (path === '/add' && location.pathname.startsWith('/edit/')) return true;
+    if (path === '/' && location.pathname === '/review') return true;
     return location.pathname === path;
   };
 
@@ -186,9 +187,9 @@ export default function Layout() {
           </Link>
 
           <Link
-            to="/"
+            to="/add"
             className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-3 transition-colors border-t-2 ${
-              isActive('/')
+              isActive('/add')
                 ? 'text-orange-600 border-orange-600'
                 : 'text-gray-400 border-transparent hover:text-gray-700'
             }`}
@@ -198,9 +199,9 @@ export default function Layout() {
           </Link>
 
           <Link
-            to="/review"
+            to="/"
             className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-3 transition-colors border-t-2 ${
-              isActive('/review')
+              isActive('/')
                 ? 'text-orange-600 border-orange-600'
                 : 'text-gray-400 border-transparent hover:text-gray-700'
             }`}
