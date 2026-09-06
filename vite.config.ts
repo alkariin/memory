@@ -5,7 +5,11 @@
   import tailwindcss from '@tailwindcss/vite';
   import path from 'path';
 
+  // Served from https://alkariin.github.io/memory/
+  const base = '/memory/';
+
   export default defineConfig({
+    base,
     plugins: [
       tailwindcss(),
       react(),
@@ -24,11 +28,11 @@
           name: 'Memory - Vocabulary Builder',
           short_name: 'Memory',
           description: 'Expand your vocabulary and learn new words',
-          id: '/',
+          id: base,
           theme_color: '#ea580c',
           background_color: '#ffffff',
-          start_url: '.',
-          scope: "/",
+          start_url: base,
+          scope: base,
           display: 'standalone',
           icons: [
             {

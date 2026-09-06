@@ -16,4 +16,4 @@ export const router = createBrowserRouter([
       { path: "/review", Component: Review },
     ],
   },
-]);
+], { basename: import.meta.env.BASE_URL });
