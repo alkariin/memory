@@ -136,13 +136,13 @@ export default function AddWord() {
           <label htmlFor="word" className="block text-sm text-gray-600 mb-2">
             Word to learn
           </label>
-          <input
-            type="text"
+          <textarea
             id="word"
             value={word}
             onChange={(e) => setWord(e.target.value)}
-            placeholder="Enter the word..."
-            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm"
+            placeholder="Enter the word or a sentence..."
+            rows={3}
+            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all resize-none shadow-sm"
             required
           />
         </div>
