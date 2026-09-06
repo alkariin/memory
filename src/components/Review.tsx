@@ -156,14 +156,12 @@ export default function Review() {
 
   const handleNext = () => {
     setShowWord(false);
-    setCurrentIndex((prev) => (prev + 1) % words.length);
+    setCurrentIndex((prev) => Math.min(prev + 1, words.length - 1));
   };
 
   const handlePrevious = () => {
     setShowWord(false);
-    setCurrentIndex(
-      (prev) => (prev - 1 + words.length) % words.length,
-    );
+    setCurrentIndex((prev) => Math.max(prev - 1, 0));
   };
 
   const markAsReviewed = (known: boolean) => {
@@ -274,6 +272,8 @@ export default function Review() {
   }
 
   const currentWord = words[currentIndex];
+  const isFirstWord = currentIndex === 0;
+  const isLastWord = currentIndex === words.length - 1;
   const hasCorrelation =
     currentWord.correlation &&
     currentWord.correlation.trim().length > 0;
@@ -396,13 +396,17 @@ export default function Review() {
           <div className="absolute bottom-6 left-6 right-6 flex justify-between">
             <button
               onClick={handlePrevious}
-              className="w-10 h-10 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-lg transition-all flex items-center justify-center"
+              disabled={isFirstWord}
+              aria-label="Previous word"
+              className="w-10 h-10 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-lg transition-all flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={handleNext}
-              className="w-10 h-10 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-lg transition-all flex items-center justify-center"
+              disabled={isLastWord}
+              aria-label="Next word"
+              className="w-10 h-10 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-lg transition-all flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
