@@ -276,6 +276,8 @@ export default function Review() {
   const hasCorrelation =
     currentWord.correlation &&
     currentWord.correlation.trim().length > 0;
+  // The card is flipped when the definition side is showing
+  const showingDefinition = Boolean(hasCorrelation) && !showWord;
 
   return (
     <div className="p-6 flex flex-col h-full">
@@ -317,7 +319,11 @@ export default function Review() {
       {/* Card */}
       <div className="flex-1 flex flex-col items-center justify-center mb-6">
         <div
-          className="relative w-full bg-white rounded-lg border border-gray-200 overflow-hidden transition-all"
+          className={`relative w-full rounded-lg border overflow-hidden transition-all ${
+            showingDefinition
+              ? "bg-orange-50 border-orange-200"
+              : "bg-white border-gray-200"
+          }`}
           style={{ minHeight: "320px" }}
         >
           {/* Reviewed Badge */}
@@ -347,12 +353,12 @@ export default function Review() {
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center">
                 <span className="text-xs uppercase tracking-wide text-gray-400 mb-4">Definition</span>
-                <div className="text-gray-500 leading-relaxed mb-8 max-w-sm text-lg italic">
+                <div className="text-2xl text-gray-900 leading-relaxed mb-8 max-w-sm font-bold">
                   {currentWord.correlation}
                 </div>
                 <button
                   onClick={handleFlip}
-                  className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 text-sm px-4 py-2 rounded-lg hover:bg-orange-50 transition-all"
+                  className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 text-sm px-4 py-2 rounded-lg hover:bg-orange-100 transition-all"
                 >
                   <Eye className="w-4 h-4" />
                   Show the word
@@ -363,7 +369,11 @@ export default function Review() {
             {/* Category */}
             {currentWord.category && (
               <div className={`flex justify-center mt-4 ${categoryTransition ? "animate-category-pulse" : ""}`}>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-600 rounded text-xs">
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 text-orange-600 rounded text-xs ${
+                    showingDefinition ? "bg-white" : "bg-orange-50"
+                  }`}
+                >
                   <Tag className="w-3 h-3" />
                   {currentWord.category}
                 </span>
