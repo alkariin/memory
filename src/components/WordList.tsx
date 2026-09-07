@@ -251,41 +251,28 @@ export default function WordList() {
 
       {/* Filter and search controls */}
       <div className="mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={toggleCategoryFilters}
-                className={`inline-flex items-center gap-1.5 px-6 py-3 rounded-lg text-sm transition-all ${
-                  showCategoryFilters
-                    ? 'bg-orange-50 text-orange-700 border border-orange-200'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
-                }`}
-              >
-                <Filter className="w-4 h-4" />
-                Filter
-              </button>
-              <button
-                onClick={toggleSearch}
-                className={`inline-flex items-center gap-1.5 px-6 py-3 rounded-lg text-sm transition-all ${
-                  showSearch
-                    ? 'bg-orange-50 text-orange-700 border border-orange-200'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
-                }`}
-              >
-                <Search className="w-4 h-4" />
-                Search
-              </button>
-            </div>
+          <div className="flex items-center gap-4 mb-6">
             <button
-              onClick={startReviewWithCategory}
-              disabled={!canStartReview}
-              tabIndex={canStartReview ? 0 : -1}
-              aria-hidden={!canStartReview}
-              style={{ visibility: canStartReview ? 'visible' : 'hidden' }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-all disabled:pointer-events-none"
+              onClick={toggleCategoryFilters}
+              className={`inline-flex items-center gap-1.5 px-6 py-3 rounded-lg text-sm transition-all ${
+                showCategoryFilters
+                  ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+              }`}
             >
-              <BookOpen className="w-4 h-4" />
-              Review
+              <Filter className="w-4 h-4" />
+              Filter
+            </button>
+            <button
+              onClick={toggleSearch}
+              className={`inline-flex items-center gap-1.5 px-6 py-3 rounded-lg text-sm transition-all ${
+                showSearch
+                  ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              <Search className="w-4 h-4" />
+              Search
             </button>
           </div>
           {showSearch && (
@@ -348,6 +335,15 @@ export default function WordList() {
               </button>
             ))}
           </div>
+          )}
+          {canStartReview && (
+            <button
+              onClick={startReviewWithCategory}
+              className="w-full mt-4 inline-flex items-center justify-center gap-2 py-3.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all font-medium"
+            >
+              <BookOpen className="w-4 h-4" />
+              Review "{getFilterLabel(selectedCategory)}"
+            </button>
           )}
       </div>
 
