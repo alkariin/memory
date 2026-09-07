@@ -15,22 +15,28 @@ interface StoredOrder {
 }
 
 /**
- * Rebuilds today's session from its frozen word ids: a word answered today
+ * Rebuilds today's session from its frozen word ids: a word already answered
  * stays in place, marked as reviewed, so leaving the tab or the app and coming
  * back resumes the session as it was left rather than dropping what was seen.
+ *
+ * Only `answeredIds`, the answers given in the day's own session, count as
+ * progress. A session started from the list answers words for real as well, so
+ * reading "reviewed today" off the word itself would show the day as partly
+ * done because of work that has nothing to do with it.
  *
  * A fully answered day returns nothing: the session is over for today.
  */
 export function resumeSessionWords(
   storedWords: Word[],
   sessionIds: string[],
-  today: string = getIsoDate(),
+  answeredIds: string[],
 ): (Word & { reviewed: boolean })[] {
   const byId = new Map(storedWords.map((w) => [w.id, w]));
+  const answered = new Set(answeredIds);
   const session = sessionIds
     .map((id) => byId.get(id))
     .filter((w): w is Word => Boolean(w))
-    .map((w) => ({ ...w, reviewed: w.lastReviewedDate === today }));
+    .map((w) => ({ ...w, reviewed: answered.has(w.id) }));
 
   return session.every((w) => w.reviewed) ? [] : session;
 }
@@ -43,7 +49,9 @@ export function firstUnreviewedIndex(words: { reviewed: boolean }[]): number {
 
 /**
  * Today's pre-answer scheduling states, kept so a restored session can still
- * change an answer without stacking iterations on top of the first one.
+ * change an answer without stacking iterations on top of the first one. Only
+ * the day's own session writes them, so their ids are also the words it has
+ * answered.
  */
 export function loadAnswerSnapshots(
   today: string = getIsoDate(),

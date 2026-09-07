@@ -85,6 +85,8 @@ export default function Review() {
     const today = getIsoDate();
 
     let rawWords: (Word & { reviewed: boolean })[] = [];
+    // Pre-answer states of the day's own session, empty for a filtered one
+    let daySnapshots: Record<string, ScheduleSnapshot> = {};
     // A limited session mixes categories, so it is grouped as one block
     let isDrawnSession = false;
     // The day's own session, as opposed to one started from the list
@@ -136,7 +138,10 @@ export default function Review() {
       const sessionIds = ensureDailySnapshot(today);
       setFillerIds(new Set(dailyMinimumEnabled ? loadDailyFillers(today) ?? [] : []));
 
-      rawWords = resumeSessionWords(storedWords, sessionIds, today);
+      // The day's answers are its progress: a session run from the list
+      // answers words for real, but it is not part of the day's programme
+      daySnapshots = loadAnswerSnapshots(today);
+      rawWords = resumeSessionWords(storedWords, sessionIds, Object.keys(daySnapshots));
       const allAnswered = sessionIds.length > 0 && rawWords.length === 0;
       setDayComplete(allAnswered);
       // Today's words are all answered while others remain due: they wait for tomorrow
@@ -155,9 +160,8 @@ export default function Review() {
       : grouped;
     if (isDailySession) saveSessionOrder(ordered.map((w) => w.id), today);
 
-    const snapshots = isDailySession ? loadAnswerSnapshots(today) : {};
     const restored = ordered.map((w) =>
-      w.reviewed && snapshots[w.id] ? { ...w, beforeAnswer: snapshots[w.id] } : w,
+      daySnapshots[w.id] ? { ...w, beforeAnswer: daySnapshots[w.id] } : w,
     );
 
     const orderedGroups = groups.map((group) => ({
@@ -259,7 +263,10 @@ export default function Review() {
     );
 
     saveWords(updatedAllWords);
-    if (!isAnswerChange) saveAnswerSnapshot(currentWord.id, beforeAnswer);
+    // Snapshots double as the day's progress, so a filtered session writes none
+    if (!isAnswerChange && !isFilteredSession) {
+      saveAnswerSnapshot(currentWord.id, beforeAnswer);
+    }
 
     // Update local state
     const updatedWords = words.map((w, index) =>

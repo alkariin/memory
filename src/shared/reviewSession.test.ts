@@ -20,10 +20,10 @@ function makeWord(id: string, lastReviewedDate: string | null = null): Word {
 }
 
 describe("resumeSessionWords", () => {
-  it("keeps the words answered today, marked as reviewed", () => {
+  it("keeps the words answered in the session, marked as reviewed", () => {
     const stored = [makeWord("a", TODAY), makeWord("b"), makeWord("c")];
 
-    const session = resumeSessionWords(stored, ["a", "b", "c"], TODAY);
+    const session = resumeSessionWords(stored, ["a", "b", "c"], ["a"]);
 
     expect(session.map((w) => w.id)).toEqual(["a", "b", "c"]);
     expect(session.map((w) => w.reviewed)).toEqual([true, false, false]);
@@ -32,7 +32,7 @@ describe("resumeSessionWords", () => {
   it("keeps the frozen order of the session ids", () => {
     const stored = [makeWord("a"), makeWord("b"), makeWord("c")];
 
-    expect(resumeSessionWords(stored, ["c", "a", "b"], TODAY).map((w) => w.id)).toEqual([
+    expect(resumeSessionWords(stored, ["c", "a", "b"], []).map((w) => w.id)).toEqual([
       "c",
       "a",
       "b",
@@ -42,20 +42,27 @@ describe("resumeSessionWords", () => {
   it("ends the day once every word has been answered", () => {
     const stored = [makeWord("a", TODAY), makeWord("b", TODAY)];
 
-    expect(resumeSessionWords(stored, ["a", "b"], TODAY)).toEqual([]);
+    expect(resumeSessionWords(stored, ["a", "b"], ["a", "b"])).toEqual([]);
   });
 
-  it("does not count an answer from another day as reviewed", () => {
-    const stored = [makeWord("a", "2026-09-05")];
+  it("does not count a review made outside the session as reviewed", () => {
+    // Answered today from the list: the day's own session is still untouched
+    const stored = [makeWord("a", TODAY)];
 
-    expect(resumeSessionWords(stored, ["a"], TODAY)).toHaveLength(1);
-    expect(resumeSessionWords(stored, ["a"], TODAY)[0].reviewed).toBe(false);
+    expect(resumeSessionWords(stored, ["a"], [])).toHaveLength(1);
+    expect(resumeSessionWords(stored, ["a"], [])[0].reviewed).toBe(false);
+  });
+
+  it("ignores answered ids that are not part of the day", () => {
+    const stored = [makeWord("a"), makeWord("b", TODAY)];
+
+    expect(resumeSessionWords(stored, ["a"], ["b"]).map((w) => w.reviewed)).toEqual([false]);
   });
 
   it("skips ids whose word was deleted", () => {
     const stored = [makeWord("a")];
 
-    expect(resumeSessionWords(stored, ["a", "gone"], TODAY).map((w) => w.id)).toEqual(["a"]);
+    expect(resumeSessionWords(stored, ["a", "gone"], []).map((w) => w.id)).toEqual(["a"]);
   });
 });
 
