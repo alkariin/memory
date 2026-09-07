@@ -71,6 +71,12 @@ export default function AddWord() {
     setShowSuggestions(true);
   };
 
+  // Browsers word their own validation bubble in the UI language, so the
+  // message is set here to keep the app in English
+  const showMissingWord = (e: React.FormEvent<HTMLTextAreaElement>) => {
+    e.currentTarget.setCustomValidity('Please enter a word to learn');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -139,7 +145,11 @@ export default function AddWord() {
           <textarea
             id="word"
             value={word}
-            onChange={(e) => setWord(e.target.value)}
+            onChange={(e) => {
+              e.currentTarget.setCustomValidity('');
+              setWord(e.target.value);
+            }}
+            onInvalid={showMissingWord}
             placeholder="Enter the word or a sentence..."
             rows={3}
             className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all resize-none shadow-sm"
