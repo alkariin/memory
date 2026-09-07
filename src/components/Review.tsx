@@ -634,7 +634,7 @@ export default function Review() {
 
       {/* Completion Dialog */}
       {showCompletionDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-6 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-6 z-50">
           <div className="bg-white rounded-lg p-8 max-w-sm w-full text-center shadow-2xl">
             <div className="w-20 h-20 bg-orange-50 rounded-lg mx-auto mb-6 flex items-center justify-center">
               <PartyPopper className="w-10 h-10 text-orange-600" />

@@ -42,6 +42,7 @@ export default function WordList() {
   const [showCategoryFilters, setShowCategoryFilters] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [wordToDelete, setWordToDelete] = useState<Word | null>(null);
   const canStartReview = Boolean(selectedCategory && words.length > 0);
 
   useEffect(() => {
@@ -71,6 +72,18 @@ export default function WordList() {
     const timeout = setTimeout(() => setHighlightedId(null), 2500);
     return () => clearTimeout(timeout);
   }, [highlightedId, words]);
+
+  // Escape closes the confirmation, as the native dialog it replaces did
+  useEffect(() => {
+    if (!wordToDelete) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setWordToDelete(null);
+    };
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [wordToDelete]);
 
   const loadWords = () => {
     const storedWords = loadStoredWords();
@@ -118,11 +131,14 @@ export default function WordList() {
     setGroupedWords(grouped);
   };
 
-  const deleteWord = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this word?')) {
-      saveWords(loadStoredWords().filter((word) => word.id !== id));
-      loadWords();
-    }
+  // Confirmed in the app rather than with window.confirm: the native dialog is
+  // titled with the site's own address, in the language of the browser
+  const deleteWord = () => {
+    if (!wordToDelete) return;
+
+    saveWords(loadStoredWords().filter((word) => word.id !== wordToDelete.id));
+    setWordToDelete(null);
+    loadWords();
   };
 
   const startReviewWithCategory = () => {
@@ -433,7 +449,7 @@ export default function WordList() {
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => deleteWord(word.id)}
+                            onClick={() => setWordToDelete(word)}
                             className="p-2 text-gray-300 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
                             aria-label="Delete"
                           >
@@ -446,6 +462,46 @@ export default function WordList() {
                 </div>
               </div>
             ))}
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {wordToDelete && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-6 z-50"
+          onClick={() => setWordToDelete(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-word-title"
+            className="bg-white rounded-lg p-8 max-w-sm w-full text-center shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="w-20 h-20 bg-red-50 rounded-lg mx-auto mb-6 flex items-center justify-center">
+              <Trash2 className="w-10 h-10 text-red-600" />
+            </div>
+            <h3 id="delete-word-title" className="text-gray-900 mb-3 text-2xl font-bold">
+              Delete this word?
+            </h3>
+            <p className="text-gray-500 mb-6 break-words">
+              "{wordToDelete.word}" is deleted for good, with its review history.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setWordToDelete(null)}
+                className="flex-1 bg-gray-100 text-gray-600 py-3.5 rounded-lg hover:bg-gray-200 transition-all font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteWord}
+                className="flex-1 bg-red-600 text-white py-3.5 rounded-lg hover:bg-red-700 transition-all font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
