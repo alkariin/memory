@@ -360,7 +360,7 @@ export default function Review() {
           </span>
         </div>
         {filterLabel && (
-          <div className="flex items-center gap-2 mt-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2 mt-2 mb-3">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-600 rounded text-xs border border-orange-200">
               <Tag className="w-3 h-3" />
               {filterLabel}
@@ -370,6 +370,15 @@ export default function Review() {
                 No-impact mode
               </span>
             )}
+            {/* A filtered session is left on demand: the words already answered
+                keep their answer, the rest simply stay untouched */}
+            <button
+              onClick={() => navigate("/list")}
+              className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded text-xs transition-all"
+            >
+              <X className="w-3 h-3" />
+              Stop this review
+            </button>
           </div>
         )}
         {(dailyLimit !== null || dailyMinimum !== null) && (
