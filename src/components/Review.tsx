@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Check,
   X,
@@ -21,6 +21,7 @@ import {
   CategoryGroup,
   groupWordsByCategory,
   ReviewWord,
+  sessionCategoryGroups,
 } from "@/shared/groupWordsByCategory";
 import { loadStoredWords, saveWords } from "@/shared/words";
 import { shouldUseContinuousBars } from "@/shared/reviewProgress";
@@ -32,6 +33,7 @@ import {
   firstUnreviewedIndex,
   loadAnswerSnapshots,
   loadSessionOrder,
+  nextUnreviewedIndex,
   resumeSessionWords,
   saveAnswerSnapshot,
   saveSessionOrder,
@@ -150,7 +152,7 @@ export default function Review() {
 
     // Grouped by category, the daily limit on or off: the day is drawn at
     // random across categories, but it is still reviewed one category at a time
-    const { grouped, categoryGroups: groups } = groupWordsByCategory(rawWords);
+    const { grouped } = groupWordsByCategory(rawWords);
 
     // A session of the day keeps the order it was first shown in; a filtered
     // one is started on demand, so it is shuffled anew every time
@@ -163,15 +165,10 @@ export default function Review() {
       daySnapshots[w.id] ? { ...w, beforeAnswer: daySnapshots[w.id] } : w,
     );
 
-    const orderedGroups = groups.map((group) => ({
-      ...group,
-      wordIds: restored
-        .filter((w) => w.assignedCategory === group.category)
-        .map((w) => w.id),
-    }));
-
     setWords(restored);
-    setCategoryGroups(orderedGroups);
+    // The row of categories follows the session order, so it stays put from one
+    // visit to the next instead of being reshuffled on every load
+    setCategoryGroups(sessionCategoryGroups(restored));
     setCurrentIndex(firstUnreviewedIndex(restored));
     setPendingCategory(null);
   };
@@ -179,28 +176,6 @@ export default function Review() {
   const handleFlip = () => {
     setShowWord(!showWord);
   };
-
-  // Find the next unreviewed word, preferring within current category group
-  const findNextUnreviewed = useCallback((updatedWords: ReviewWord[], fromIndex: number): number => {
-    // First try to find next unreviewed in same category group
-    const currentCategory = updatedWords[fromIndex]?.assignedCategory;
-    if (currentCategory) {
-      for (let i = fromIndex + 1; i < updatedWords.length; i++) {
-        if (!updatedWords[i].reviewed && updatedWords[i].assignedCategory === currentCategory) {
-          return i;
-        }
-      }
-    }
-    // Then find any next unreviewed (next category group)
-    for (let i = fromIndex + 1; i < updatedWords.length; i++) {
-      if (!updatedWords[i].reviewed) return i;
-    }
-    // Wrap around
-    for (let i = 0; i < fromIndex; i++) {
-      if (!updatedWords[i].reviewed) return i;
-    }
-    return fromIndex;
-  }, []);
 
   const handleNext = () => {
     setShowWord(false);
@@ -282,8 +257,7 @@ export default function Review() {
     if (updatedWords.every((w) => w.reviewed)) {
       setShowCompletionDialog(true);
     } else {
-      // Find next unreviewed word
-      const nextIndex = findNextUnreviewed(updatedWords, currentIndex);
+      const nextIndex = nextUnreviewedIndex(updatedWords, currentIndex);
       const currentCategory = updatedWords[currentIndex].assignedCategory;
       const nextCategory = updatedWords[nextIndex].assignedCategory;
 

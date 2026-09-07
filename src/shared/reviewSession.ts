@@ -41,6 +41,31 @@ export function resumeSessionWords(
   return session.every((w) => w.reviewed) ? [] : session;
 }
 
+/**
+ * Where the session goes after an answer: the next word still unanswered, taken
+ * from the category being reviewed before any other.
+ *
+ * The search wraps around the whole session, so a word skipped with the
+ * navigation arrows is picked up again before its category is left behind.
+ * Returns `fromIndex` when nothing is left to answer.
+ */
+export function nextUnreviewedIndex(
+  words: { reviewed: boolean; assignedCategory: string }[],
+  fromIndex: number,
+): number {
+  const category = words[fromIndex]?.assignedCategory;
+
+  // The session read as a ring, starting right after the current word
+  const ring = words.map((_, offset) => (fromIndex + 1 + offset) % words.length);
+  const pending = ring.filter((index) => index !== fromIndex && !words[index].reviewed);
+
+  return (
+    pending.find((index) => words[index].assignedCategory === category)
+    ?? pending[0]
+    ?? fromIndex
+  );
+}
+
 /** Where to resume: the first word still waiting for an answer. */
 export function firstUnreviewedIndex(words: { reviewed: boolean }[]): number {
   const index = words.findIndex((w) => !w.reviewed);

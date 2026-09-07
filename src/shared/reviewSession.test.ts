@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { applySessionOrder, firstUnreviewedIndex, resumeSessionWords } from "./reviewSession";
+import {
+  applySessionOrder,
+  firstUnreviewedIndex,
+  nextUnreviewedIndex,
+  resumeSessionWords,
+} from "./reviewSession";
 import { EASE, Word } from "./types";
 
 const TODAY = "2026-09-06";
@@ -63,6 +68,40 @@ describe("resumeSessionWords", () => {
     const stored = [makeWord("a")];
 
     expect(resumeSessionWords(stored, ["a", "gone"], []).map((w) => w.id)).toEqual(["a"]);
+  });
+});
+
+describe("nextUnreviewedIndex", () => {
+  // "a1 A" reads: word a1, of category A, still unanswered; "a1! A" is answered
+  const session = (...words: string[]) =>
+    words.map((word) => ({
+      reviewed: word.includes("!"),
+      assignedCategory: word.split(" ")[1],
+    }));
+
+  it("goes to the next word of the category being reviewed", () => {
+    expect(nextUnreviewedIndex(session("a1! A", "a2 A", "b1 B"), 0)).toBe(1);
+  });
+
+  it("comes back for a word skipped earlier in the category", () => {
+    // a1 was left behind with the navigation arrows, a3 has just been answered
+    expect(nextUnreviewedIndex(session("a1 A", "a2! A", "a3! A", "b1 B"), 2)).toBe(0);
+  });
+
+  it("moves on once the category holds nothing unanswered", () => {
+    expect(nextUnreviewedIndex(session("a1! A", "a2! A", "b1 B"), 1)).toBe(2);
+  });
+
+  it("wraps back to a category left behind", () => {
+    expect(nextUnreviewedIndex(session("a1 A", "b1! B", "b2! B"), 2)).toBe(0);
+  });
+
+  it("stays put once every word is answered", () => {
+    expect(nextUnreviewedIndex(session("a1! A", "b1! B"), 1)).toBe(1);
+  });
+
+  it("handles an empty session", () => {
+    expect(nextUnreviewedIndex(session(), 0)).toBe(0);
   });
 });
 

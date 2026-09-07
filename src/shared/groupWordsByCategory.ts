@@ -16,6 +16,30 @@ export interface CategoryGroup {
 export const UNCATEGORIZED = "Uncategorized";
 
 /**
+ * The category groups of a session, in the order its words are reviewed, each
+ * holding its word ids in that same order.
+ *
+ * Derived from the words rather than kept aside, so the progress row cannot
+ * drift from the session it describes.
+ */
+export function sessionCategoryGroups(words: ReviewWord[]): CategoryGroup[] {
+  const groups: CategoryGroup[] = [];
+  const byCategory = new Map<string, CategoryGroup>();
+
+  for (const word of words) {
+    let group = byCategory.get(word.assignedCategory);
+    if (!group) {
+      group = { category: word.assignedCategory, wordIds: [] };
+      byCategory.set(word.assignedCategory, group);
+      groups.push(group);
+    }
+    group.wordIds.push(word.id);
+  }
+
+  return groups;
+}
+
+/**
  * Groups words by category for the review session.
  * Each word appears in exactly one group; the category order is drawn at
  * random so the day does not always open on the same ones, and words without
@@ -42,19 +66,14 @@ export function groupWordsByCategory(
     ...categories.filter((c) => c === UNCATEGORIZED),
   ];
 
-  const categoryGroups: CategoryGroup[] = categoryOrder.map((category) => ({
-    category,
-    wordIds: categoryMap.get(category)!,
-  }));
-
-  // Flatten words in category-group order
+  // Flatten words in category order
   const wordMap = new Map(words.map((w) => [w.id, w]));
-  const grouped: ReviewWord[] = categoryGroups.flatMap((group) =>
-    group.wordIds.map((id) => ({
+  const grouped: ReviewWord[] = categoryOrder.flatMap((category) =>
+    categoryMap.get(category)!.map((id) => ({
       ...wordMap.get(id)!,
-      assignedCategory: group.category,
+      assignedCategory: category,
     })),
   );
 
-  return { grouped, categoryGroups };
+  return { grouped, categoryGroups: sessionCategoryGroups(grouped) };
 }

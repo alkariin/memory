@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { groupWordsByCategory, UNCATEGORIZED } from "./groupWordsByCategory";
+import {
+  groupWordsByCategory,
+  ReviewWord,
+  sessionCategoryGroups,
+  UNCATEGORIZED,
+} from "./groupWordsByCategory";
 import { EASE, Word } from "./types";
 
 function makeWord(id: string, category: string | null): Word & { reviewed: boolean } {
@@ -94,5 +99,32 @@ describe("groupWordsByCategory", () => {
 
     expect(grouped).toEqual([]);
     expect(categoryGroups).toEqual([]);
+  });
+});
+
+describe("sessionCategoryGroups", () => {
+  const session = (...pairs: [string, string][]): ReviewWord[] =>
+    pairs.map(([id, category]) => ({
+      ...makeWord(id, category),
+      assignedCategory: category,
+    }));
+
+  it("keeps the categories in the order the session reviews them", () => {
+    const groups = sessionCategoryGroups(session(["w1", "B"], ["w2", "B"], ["w3", "A"]));
+
+    expect(groups.map((g) => g.category)).toEqual(["B", "A"]);
+    expect(groups.map((g) => g.wordIds)).toEqual([["w1", "w2"], ["w3"]]);
+  });
+
+  it("gathers a category split across the session in one group", () => {
+    // A word that became due later joins at the end of the frozen order
+    const groups = sessionCategoryGroups(session(["w1", "A"], ["w2", "B"], ["w3", "A"]));
+
+    expect(groups.map((g) => g.category)).toEqual(["A", "B"]);
+    expect(groups[0].wordIds).toEqual(["w1", "w3"]);
+  });
+
+  it("handles an empty session", () => {
+    expect(sessionCategoryGroups([])).toEqual([]);
   });
 });
