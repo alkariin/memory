@@ -97,6 +97,10 @@ export default function Review() {
     if (filterData) {
       const filter = JSON.parse(filterData) as ReviewFilterPayload;
 
+      // Freeze today's programme before answering anything outside of it: the
+      // day is then settled whatever a filtered session does to the words
+      ensureDailySnapshot(today);
+
       isDailySession = false;
       setDayComplete(false);
       setDailyLimit(null);
