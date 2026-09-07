@@ -15,25 +15,6 @@ export interface CategoryGroup {
 
 export const UNCATEGORIZED = "Uncategorized";
 
-/** Group name for a session drawn at random across every category. */
-export const MIXED = "Mixed";
-
-/**
- * Puts every word in a single group, keeping the order it was given.
- * Used by the daily-limit session: its words are drawn at random across all
- * categories, so grouping them by category would say nothing about progress.
- */
-export function groupWordsAsSingleGroup(
-  words: (Word & { reviewed: boolean })[],
-): { grouped: ReviewWord[]; categoryGroups: CategoryGroup[] } {
-  if (words.length === 0) return { grouped: [], categoryGroups: [] };
-
-  return {
-    grouped: words.map((word) => ({ ...word, assignedCategory: MIXED })),
-    categoryGroups: [{ category: MIXED, wordIds: words.map((w) => w.id) }],
-  };
-}
-
 /**
  * Groups words by category for the review session.
  * Each word appears in exactly one group; the category order is drawn at

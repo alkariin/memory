@@ -19,7 +19,6 @@ import { EASE, ReviewFilterPayload, ScheduleSnapshot, Word } from "@/shared/type
 import { getIsoDate } from "@/shared/dates";
 import {
   CategoryGroup,
-  groupWordsAsSingleGroup,
   groupWordsByCategory,
   ReviewWord,
 } from "@/shared/groupWordsByCategory";
@@ -87,8 +86,6 @@ export default function Review() {
     let rawWords: (Word & { reviewed: boolean })[] = [];
     // Pre-answer states of the day's own session, empty for a filtered one
     let daySnapshots: Record<string, ScheduleSnapshot> = {};
-    // A limited session mixes categories, so it is grouped as one block
-    let isDrawnSession = false;
     // The day's own session, as opposed to one started from the list
     let isDailySession = true;
 
@@ -138,7 +135,6 @@ export default function Review() {
         loadSettings();
       setDailyLimit(dailyLimitEnabled ? dailyWordLimit : null);
       setDailyMinimum(dailyMinimumEnabled ? dailyMinimumWords : null);
-      isDrawnSession = dailyLimitEnabled;
       const sessionIds = ensureDailySnapshot(today);
       setFillerIds(new Set(dailyMinimumEnabled ? loadDailyFillers(today) ?? [] : []));
 
@@ -152,10 +148,9 @@ export default function Review() {
       setDailyLimitReached(dailyLimitEnabled && allAnswered && dueWords.length > 0);
     }
 
-    // Group by category, unless the words were drawn across all categories
-    const { grouped, categoryGroups: groups } = isDrawnSession
-      ? groupWordsAsSingleGroup(rawWords)
-      : groupWordsByCategory(rawWords);
+    // Grouped by category, the daily limit on or off: the day is drawn at
+    // random across categories, but it is still reviewed one category at a time
+    const { grouped, categoryGroups: groups } = groupWordsByCategory(rawWords);
 
     // A session of the day keeps the order it was first shown in; a filtered
     // one is started on demand, so it is shuffled anew every time
