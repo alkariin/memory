@@ -341,8 +341,8 @@ export default function Review() {
   const hasCorrelation =
     currentWord.correlation &&
     currentWord.correlation.trim().length > 0;
-  // The card is flipped when the definition side is showing
-  const showingDefinition = Boolean(hasCorrelation) && !showWord;
+  // The card is flipped once the word side is showing; it starts on the definition
+  const isFlipped = Boolean(hasCorrelation) && showWord;
 
   return (
     <div className="p-6 flex flex-col h-full">
@@ -416,7 +416,7 @@ export default function Review() {
         ) : (
           <div
             className={`relative w-full rounded-lg border overflow-hidden transition-all ${
-              showingDefinition
+              isFlipped
                 ? "bg-orange-50 border-orange-200"
                 : "bg-white border-gray-200"
             }`}
@@ -478,7 +478,7 @@ export default function Review() {
                   {currentWord.category && (
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 text-orange-600 rounded text-xs ${
-                        showingDefinition ? "bg-white" : "bg-orange-50"
+                        isFlipped ? "" : "bg-orange-50"
                       }`}
                     >
                       <Tag className="w-3 h-3" />
@@ -488,7 +488,7 @@ export default function Review() {
                   {fillerIds.has(currentWord.id) && (
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 text-gray-500 rounded text-xs ${
-                        showingDefinition ? "bg-white" : "bg-gray-100"
+                        isFlipped ? "" : "bg-gray-100"
                       }`}
                       title="Not due today: drawn to reach the daily minimum"
                     >
@@ -506,7 +506,9 @@ export default function Review() {
                 onClick={handlePrevious}
                 disabled={isFirstWord}
                 aria-label="Previous word"
-                className="w-10 h-10 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-lg transition-all flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
+                className={`w-10 h-10 text-gray-500 hover:text-gray-700 rounded-lg transition-all flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none ${
+                  isFlipped ? "hover:bg-orange-100" : "bg-gray-50 hover:bg-gray-100"
+                }`}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -514,7 +516,9 @@ export default function Review() {
                 onClick={handleNext}
                 disabled={isLastWord}
                 aria-label="Next word"
-                className="w-10 h-10 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 rounded-lg transition-all flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
+                className={`w-10 h-10 text-gray-500 hover:text-gray-700 rounded-lg transition-all flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none ${
+                  isFlipped ? "hover:bg-orange-100" : "bg-gray-50 hover:bg-gray-100"
+                }`}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
